@@ -16,10 +16,10 @@ meeting_types = {
 def generate_meeting(date, client, is_night=False):
     if is_night:
         meeting_type = random.choice(["Security", "Monitoring"])
-        start_time = datetime.time(hour=random.randint(20, 23, 0, 5))
+        start_time = datetime.time(hour=random.randint(20, 23))
     else:
         meeting_type = random.choice(["Maintenance", "FireTest", "Monitoring"])
-        start_time = datetime.time(hour=random.randint(12, 19))
+        start_time = datetime.time(hour=random.randint(7, 19))
     duration = datetime.timedelta(hours=meeting_types[meeting_type]["duration"])
     end_time = (datetime.datetime.combine(date, start_time) + duration).time()
     return {
@@ -69,13 +69,13 @@ calendar_options = {
         "right": "dayGridMonth,timeGridWeek,timeGridDay",
     },
     "initialView": "timeGridWeek",
-    "slotMinTime": "12:00:00",
-    "slotMaxTime": "30:00:00",  # 6:00 AM next day
+    "slotMinTime": "07:00:00",
+    "slotMaxTime": "31:00:00",  # 7:00 AM next day
     "expandRows": True,
     "height": "650px",
     "dayMaxEvents": True,
     "allDaySlot": False,
-    "scrollTime": "12:00:00",  # Start scrolled to 12:00 PM
+    "scrollTime": "07:00:00",  # Start scrolled to 7:00 AM
     "nowIndicator": True,
 }
 

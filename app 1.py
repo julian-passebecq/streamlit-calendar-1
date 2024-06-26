@@ -35,8 +35,6 @@ def generate_meeting(date, client, is_night=False):
         "end": f"{date}T{end_time}",
         "backgroundColor": meeting_types[meeting_type]["color"],
         "borderColor": meeting_types[meeting_type]["color"],
-        "client": f"Client {client}",
-        "type": meeting_type
     }
 
 def generate_meetings(start_date, num_clients=5):
@@ -60,22 +58,6 @@ if 'calendar_events' not in st.session_state:
     today = datetime.date.today()
     start_of_week = today - datetime.timedelta(days=today.weekday())
     st.session_state.calendar_events = generate_meetings(start_of_week)
-
-# Create filters
-all_clients = sorted(set(event['client'] for event in st.session_state.calendar_events))
-all_types = sorted(set(event['type'] for event in st.session_state.calendar_events))
-
-col1, col2 = st.columns(2)
-with col1:
-    selected_clients = st.multiselect("Select Clients", all_clients, default=all_clients)
-with col2:
-    selected_types = st.multiselect("Select Appointment Types", all_types, default=all_types)
-
-# Filter events based on selection
-filtered_events = [
-    event for event in st.session_state.calendar_events
-    if event['client'] in selected_clients and event['type'] in selected_types
-]
 
 # Define calendar options
 calendar_options = {
@@ -101,7 +83,7 @@ custom_css = """
 """
 
 # Display the calendar
-cal = calendar(events=filtered_events, options=calendar_options, custom_css=custom_css)
+cal = calendar(events=st.session_state.calendar_events, options=calendar_options, custom_css=custom_css)
 st.write(cal)
 
 # Display legend

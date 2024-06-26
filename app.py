@@ -15,42 +15,38 @@ meeting_types = {
     "Monitoring": "#99CCFF"
 }
 
-# Function to generate random meetings for a week
+def generate_meeting(date, client, is_night=False):
+    if is_night:
+        meeting_type = random.choice(["Security", "Monitoring"])
+        start_time = datetime.time(hour=random.randint(20, 23))
+    else:
+        meeting_type = random.choice(list(meeting_types.keys()))
+        start_time = datetime.time(hour=random.randint(8, 19))
+
+    duration = datetime.timedelta(hours=random.randint(1, 3))
+    end_time = (datetime.datetime.combine(date, start_time) + duration).time()
+
+    return {
+        "title": f"Client {client}: {meeting_type}" + (" (Night)" if is_night else ""),
+        "start": f"{date}T{start_time}",
+        "end": f"{date}T{end_time}",
+        "backgroundColor": meeting_types[meeting_type],
+        "borderColor": meeting_types[meeting_type],
+    }
+
 def generate_meetings(start_date, num_clients=5):
     events = []
     for client in range(1, num_clients + 1):
-        for day in range(7):  # 7 days in a week
+        for day in range(7):
             current_date = start_date + datetime.timedelta(days=day)
 
             # Day meetings (2-3 per day)
             for _ in range(random.randint(2, 3)):
-                meeting_type = random.choice(["Maintenance", "FireTest", "Security", "Monitoring"])
-                start_time = datetime.time(hour=random.randint(8, 19))
-                duration = datetime.timedelta(hours=random.randint(1, 3))
-                end_time = (datetime.datetime.combine(datetime.date.today(), start_time) + duration).time()
+                events.append(generate_meeting(current_date, client))
 
-                events.append({
-                    "title": f"Client {client}: {meeting_type}",
-                    "start": f"{current_date}T{start_time}",
-                    "end": f"{current_date}T{end_time}",
-                    "backgroundColor": meeting_types[meeting_type],
-                    "borderColor": meeting_types[meeting_type],
-                })
-
-            # Night meeting (0 or 1 per day, only Security or Monitoring)
+            # Night meeting (0 or 1 per day)
             if random.choice([True, False]):
-                meeting_type = random.choice(["Security", "Monitoring"])
-                start_time = datetime.time(hour=random.randint(20, 23))
-                duration = datetime.timedelta(hours=random.randint(1, 3))
-                end_time = (datetime.datetime.combine(datetime.date.today(), start_time) + duration).time()
-
-                events.append({
-                    "title": f"Client {client}: {meeting_type} (Night)",
-                    "start": f"{current_date}T{start_time}",
-                    "end": f"{current_date}T{end_time}",
-                    "backgroundColor": meeting_types[meeting_type],
-                    "borderColor": meeting_types[meeting_type],
-                })
+                events.append(generate_meeting(current_date, client, is_night=True))
 
     return events
 
@@ -78,17 +74,10 @@ calendar_options = {
 
 # Custom CSS for the calendar
 custom_css = """
-    .fc-event-past {
-        opacity: 0.8;
-    }
-    .fc-event-time {
-        font-weight: bold;
-    }
-    .fc-event-title {
-        font-style: italic;
-    }
+    .fc-event-past { opacity: 0.8; }
+    .fc-event-time { font-weight: bold; }
+    .fc-event-title { font-style: italic; }
 """
-
 
 # Display the calendar
 cal = calendar(events=st.session_state.calendar_events, options=calendar_options, custom_css=custom_css)

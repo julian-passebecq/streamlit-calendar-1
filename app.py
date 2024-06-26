@@ -7,31 +7,34 @@ st.set_page_config(page_title="Streamlit Calendar Demo", layout="wide")
 
 st.title("Streamlit Calendar Demo")
 
-# Define meeting types and their colors
+# Define meeting types, their colors, and durations
 meeting_types = {
-    "Maintenance": "#FF9999",
-    "FireTest": "#FFCC99",
-    "Security": "#99FF99",
-    "Monitoring": "#99CCFF"
+    "Maintenance": {"color": "#FF9999", "duration": 1},
+    "FireTest": {"color": "#FFCC99", "duration": 2},
+    "Security": {"color": "#99FF99", "duration": 3},
+    "Monitoring": {"color": "#99CCFF", "duration": 2}
 }
 
 def generate_meeting(date, client, is_night=False):
     if is_night:
         meeting_type = random.choice(["Security", "Monitoring"])
-        start_time = datetime.time(hour=random.randint(20, 23))
     else:
         meeting_type = random.choice(list(meeting_types.keys()))
+
+    if is_night:
+        start_time = datetime.time(hour=random.randint(20, 23))
+    else:
         start_time = datetime.time(hour=random.randint(8, 19))
 
-    duration = datetime.timedelta(hours=random.randint(1, 3))
+    duration = datetime.timedelta(hours=meeting_types[meeting_type]["duration"])
     end_time = (datetime.datetime.combine(date, start_time) + duration).time()
 
     return {
         "title": f"Client {client}: {meeting_type}" + (" (Night)" if is_night else ""),
         "start": f"{date}T{start_time}",
         "end": f"{date}T{end_time}",
-        "backgroundColor": meeting_types[meeting_type],
-        "borderColor": meeting_types[meeting_type],
+        "backgroundColor": meeting_types[meeting_type]["color"],
+        "borderColor": meeting_types[meeting_type]["color"],
     }
 
 def generate_meetings(start_date, num_clients=5):
@@ -84,9 +87,9 @@ cal = calendar(events=st.session_state.calendar_events, options=calendar_options
 st.write(cal)
 
 # Display legend
-st.subheader("Meeting Types")
-for meeting_type, color in meeting_types.items():
-    st.markdown(f'<span style="color:{color}">■</span> {meeting_type}', unsafe_allow_html=True)
+st.subheader("Meeting Types and Durations")
+for meeting_type, info in meeting_types.items():
+    st.markdown(f'<span style="color:{info["color"]}">■</span> {meeting_type} ({info["duration"]} hour{"s" if info["duration"] > 1 else ""})', unsafe_allow_html=True)
 
 # Display selected event information
 if isinstance(cal, dict) and 'eventClick' in cal:

@@ -16,10 +16,10 @@ meeting_types = {
 def generate_meeting(date, client, is_night=False):
     if is_night:
         meeting_type = random.choice(["Security", "Monitoring"])
-        start_time = datetime.time(hour=random.randint(20, 23))
+        start_time = datetime.time(hour=random.randint(20, 23), minute=random.randint(0, 59))
     else:
         meeting_type = random.choice(["Maintenance", "FireTest", "Monitoring"])
-        start_time = datetime.time(hour=random.randint(7, 19))
+        start_time = datetime.time(hour=random.randint(7, 19), minute=random.randint(0, 59))
     duration = datetime.timedelta(hours=meeting_types[meeting_type]["duration"])
     end_time = (datetime.datetime.combine(date, start_time) + duration).time()
     return {

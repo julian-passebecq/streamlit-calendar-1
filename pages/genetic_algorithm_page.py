@@ -1,35 +1,89 @@
-import streamlit as st
-from utils.genetic_algorithm import genetic_algorithm, Agent, Meeting
+import random
+from typing import List, Dict, Tuple
 
-def show():
-    st.title("Genetic Algorithm Scheduling")
-    
-    # Input for number of agents
-    num_agents = st.number_input("Number of Agents", min_value=1, max_value=10, value=5)
-    
-    # Input for agent skills
-    st.subheader("Agent Skills")
-    agents = []
-    for i in range(num_agents):
-        skills = st.multiselect(f"Agent {i+1} Skills", ["Fire", "Security", "Maintenance"], key=f"agent_{i}")
-        agents.append(Agent(i, skills))
-    
-    # Input for meetings
-    st.subheader("Meetings")
-    num_meetings = st.number_input("Number of Meetings", min_value=1, max_value=50, value=20)
-    meetings = []
-    for i in range(num_meetings):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            start_slot = st.number_input(f"Meeting {i+1} Start Slot", min_value=0, max_value=47, value=0, key=f"start_{i}")
-        with col2:
-            duration = st.number_input(f"Meeting {i+1} Duration", min_value=1, max_value=4, value=1, key=f"duration_{i}")
-        with col3:
-            required_skill = st.selectbox(f"Meeting {i+1} Required Skill", ["Fire", "Security", "Maintenance", "Monitoring"], key=f"skill_{i}")
-        meetings.append(Meeting(start_slot, duration, required_skill))
-    
-    # Run genetic algorithm
-    if st.button("Run Genetic Algorithm"):
-        best_schedule = genetic_algorithm(agents, meetings, pop_size=50, generations=100, mutation_rate=0.1)
-        st.session_state.best_schedule = best_schedule
-        st.success("Genetic algorithm completed. View results in the Results page.")
+class Agent:
+    def __init__(self, id: int, skills: List[str]):
+        self.id = id
+        self.skills = skills
+
+class Meeting:
+    def __init__(self, start_slot: int, duration: int, required_skill: str):
+        self.start_slot = start_slot
+        self.duration = duration
+        self.required_skill = required_skill
+
+class Schedule:
+    def __init__(self, agents: List[Agent], meetings: List[Meeting]):
+        self.agents = agents
+        self.meetings = meetings
+        self.assignments = {}  # {meeting: agent}
+
+def initialize_population(pop_size: int, agents: List[Agent], meetings: List[Meeting]) -> List[Schedule]:
+    population = []
+    for _ in range(pop_size):
+        schedule = Schedule(agents, meetings)
+        for meeting in meetings:
+            eligible_agents = [agent for agent in agents if meeting.required_skill in agent.skills]
+            if eligible_agents:
+                schedule.assignments[meeting] = random.choice(eligible_agents)
+        population.append(schedule)
+    return population
+
+def fitness(schedule: Schedule) -> float:
+    score = 0
+    agent_schedules = {agent: [0] * 48 for agent in schedule.agents}  # 48 30-minute slots
+
+    for meeting, agent in schedule.assignments.items():
+        if meeting.required_skill not in agent.skills:
+            score -= 100
+
+        for slot in range(meeting.start_slot, meeting.start_slot + meeting.duration):
+            if agent_schedules[agent][slot] == 1:
+                score -= 50
+            agent_schedules[agent][slot] = 1
+
+        if meeting.start_slot > 0 and agent_schedules[agent][meeting.start_slot - 1] == 1:
+            score -= 25
+
+    for agent, schedule in agent_schedules.items():
+        work_slots = sum(schedule)
+        if work_slots > 16:  # 8 hours
+            score -= (work_slots - 16) * 10
+
+    return score
+
+def crossover(parent1: Schedule, parent2: Schedule) -> Tuple[Schedule, Schedule]:
+    child1, child2 = Schedule(parent1.agents, parent1.meetings), Schedule(parent2.agents, parent2.meetings)
+    crossover_point = random.randint(0, len(parent1.meetings))
+
+    child1.assignments = {**dict(list(parent1.assignments.items())[:crossover_point]),
+                          **dict(list(parent2.assignments.items())[crossover_point:])}
+    child2.assignments = {**dict(list(parent2.assignments.items())[:crossover_point]),
+                          **dict(list(parent1.assignments.items())[crossover_point:])}
+
+    return child1, child2
+
+def mutate(schedule: Schedule, mutation_rate: float):
+    for meeting in schedule.meetings:
+        if random.random() < mutation_rate:
+            eligible_agents = [agent for agent in schedule.agents if meeting.required_skill in agent.skills]
+            if eligible_agents:
+                schedule.assignments[meeting] = random.choice(eligible_agents)
+
+def genetic_algorithm(agents: List[Agent], meetings: List[Meeting], pop_size: int, generations: int, mutation_rate: float) -> Schedule:
+    population = initialize_population(pop_size, agents, meetings)
+
+    for _ in range(generations):
+        population = sorted(population, key=lambda x: fitness(x), reverse=True)
+        new_population = population[:2]  # Keep the two best schedules
+
+        while len(new_population) < pop_size:
+            parent1, parent2 = random.sample(population[:pop_size // 2], 2)
+            child1, child2 = crossover(parent1, parent2)
+            mutate(child1, mutation_rate)
+            mutate(child2, mutation_rate)
+            new_population.extend([child1, child2])
+
+        population = new_population
+
+    return max(population, key=lambda x: fitness(x))

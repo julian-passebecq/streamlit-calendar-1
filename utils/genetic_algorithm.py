@@ -83,4 +83,11 @@ def genetic_algorithm(agents: List[Agent], meetings: List[Meeting], pop_size: in
 
         while len(new_population) < pop_size:
             parent1, parent2 = random.sample(population[:pop_size // 2], 2)
-            child1
+            child1, child2 = crossover(parent1, parent2)
+            mutate(child1, mutation_rate)
+            mutate(child2, mutation_rate)
+            new_population.extend([child1, child2])
+
+        population = new_population
+
+    return max(population, key=lambda x: fitness(x))

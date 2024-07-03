@@ -4,7 +4,7 @@ import datetime
 import pandas as pd
 from utils.meeting_utils import generate_meetings, meeting_types
 
-def show():
+def show_calendar_page():
     st.title("Calendar View")
 
     if 'calendar_events' not in st.session_state:

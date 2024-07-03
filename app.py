@@ -1,20 +1,10 @@
 import streamlit as st
 from streamlit_calendar import calendar
 import datetime
-import random
 import pandas as pd
-from typing import List, Dict, Tuple
 from utils.meeting_utils import generate_meetings, meeting_types
 
 st.set_page_config(page_title="Scheduling App", layout="wide")
-
-# Define meeting types and their properties
-meeting_types = {
-    "Maintenance": {"color": "#FF9999", "duration": 1},
-    "FireTest": {"color": "#FFCC99", "duration": 2},
-    "Security": {"color": "#99FF99", "duration": 3},
-    "Monitoring": {"color": "#99CCFF", "duration": 2}
-}
 
 def show_calendar_page():
     st.title("Calendar View")
@@ -24,10 +14,21 @@ def show_calendar_page():
     num_clients = st.sidebar.slider("Number of Clients", 1, 10, 5)
     start_date = st.sidebar.date_input("Start Date", datetime.date.today())
     date_range = st.sidebar.slider("Date Range (days)", 1, 14, 7)
-    
+    num_night_shifts = st.sidebar.slider("Number of Night Shifts", 0, 10, 2)
+    num_day_shifts = st.sidebar.slider("Number of Day Shifts", 0, 10, 3)
+    shift_duration = st.sidebar.slider("Duration of Shifts (hours)", 1, 12, 2)
+    night_start_time = st.sidebar.slider("Starting Time of Night Shifts", 18, 23, 20)
+
     if 'calendar_events' not in st.session_state:
-        start_of_week = start_date - datetime.timedelta(days=start_date.weekday())
-        st.session_state.calendar_events = generate_meetings(start_of_week, num_clients)
+        st.session_state.calendar_events = []
+
+    if st.sidebar.button("Generate New Events"):
+        st.session_state.calendar_events = generate_meetings(
+            start_date, num_clients, date_range, num_night_shifts, num_day_shifts, shift_duration, night_start_time
+        )
+
+    if not st.session_state.calendar_events:
+        st.info("No events generated yet. Adjust the options and click 'Generate New Events'.")
 
     all_clients = sorted(set(event['client'] for event in st.session_state.calendar_events))
     all_types = sorted(list(meeting_types.keys()))
@@ -109,11 +110,6 @@ def show_calendar_page():
 
     summary_df = pd.DataFrame(summary_data)
     st.table(summary_df)
-
-    if st.button("Generate New Events"):
-        start_of_week = start_date - datetime.timedelta(days=start_date.weekday())
-        st.session_state.calendar_events = generate_meetings(start_of_week, num_clients)
-        st.experimental_rerun()
 
 def main():
     show_calendar_page()

@@ -5,6 +5,7 @@ import random
 import pandas as pd
 from typing import List, Dict, Tuple
 
+# Set up the page configuration
 st.set_page_config(page_title="Scheduling App", layout="wide")
 
 # Define meeting types and their properties
@@ -15,7 +16,7 @@ meeting_types = {
     "Monitoring": {"color": "#99CCFF", "duration": 2}
 }
 
-# Calendar page functions
+# Utility function to generate meetings
 def generate_meeting(date, client, is_night=False):
     if is_night:
         meeting_type = random.choice(["Security", "Monitoring"])
@@ -39,6 +40,7 @@ def generate_meeting(date, client, is_night=False):
         "is_night": is_night
     }
 
+# Utility function to generate a week's worth of meetings for multiple clients
 def generate_meetings(start_date, num_clients=5):
     events = []
     for day in range(7):
@@ -46,8 +48,7 @@ def generate_meetings(start_date, num_clients=5):
         daily_hours = 0
         while daily_hours < 40:  # 5 agents * 8 hours
             client = random.randint(1, num_clients)
-            is_night = random.choice(
-                [True, False]) if daily_hours >= 32 else False  # Allow night meetings only in the last 8 hours
+            is_night = random.choice([True, False]) if daily_hours >= 32 else False  # Allow night meetings only in the last 8 hours
             meeting = generate_meeting(current_date, client, is_night)
             meeting_duration = meeting_types[meeting['type']]['duration']
             if daily_hours + meeting_duration <= 40:
@@ -57,6 +58,7 @@ def generate_meetings(start_date, num_clients=5):
                 break
     return events
 
+# Calendar page
 def show_calendar_page():
     st.title("Calendar View")
 
@@ -175,7 +177,8 @@ def initialize_population(pop_size: int, agents: List[Agent], meetings: List[Mee
     for _ in range(pop_size):
         schedule = Schedule(agents, meetings)
         for meeting in meetings:
-            eligible_agents = [agent for agent in agents if meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
+            eligible_agents = [agent for agent in agents if
+                               meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
             if eligible_agents:
                 schedule.assignments[meeting] = random.choice(eligible_agents)
         population.append(schedule)
@@ -222,11 +225,13 @@ def crossover(parent1: Schedule, parent2: Schedule) -> Tuple[Schedule, Schedule]
 def mutate(schedule: Schedule, mutation_rate: float):
     for meeting in schedule.meetings:
         if random.random() < mutation_rate:
-            eligible_agents = [agent for agent in schedule.agents if meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
+            eligible_agents = [agent for agent in schedule.agents if
+                               meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
             if eligible_agents:
                 schedule.assignments[meeting] = random.choice(eligible_agents)
 
-def genetic_algorithm(agents: List[Agent], meetings: List[Meeting], pop_size: int, generations: int, mutation_rate: float) -> Schedule:
+def genetic_algorithm(agents: List[Agent], meetings: List[Meeting], pop_size: int, generations: int,
+                      mutation_rate: float) -> Schedule:
     population = initialize_population(pop_size, agents, meetings)
 
     for _ in range(generations):

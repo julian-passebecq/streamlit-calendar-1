@@ -4,8 +4,12 @@ import numpy as np
 from datetime import datetime, timedelta
 import random
 
-# Genetic Algorithm related imports
-from deap import base, creator, tools, algorithms
+# Try to import DEAP, but don't fail if it's not installed
+try:
+    from deap import base, creator, tools, algorithms
+    DEAP_INSTALLED = True
+except ImportError:
+    DEAP_INSTALLED = False
 
 # Set page config
 st.set_page_config(page_title="Security Company Scheduling", layout="wide")
@@ -20,6 +24,10 @@ crossover_rate = st.sidebar.slider("Crossover Rate", 0.1, 1.0, 0.8)
 # Main app structure
 def main():
     st.title("Security Company Scheduling System")
+    
+    if not DEAP_INSTALLED:
+        st.error("The DEAP library is not installed. Some features may not work correctly.")
+        st.info("To install DEAP, run: pip install deap")
     
     st.write("""
     Welcome to the Security Company Scheduling System. 

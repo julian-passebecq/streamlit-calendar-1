@@ -1,3 +1,0 @@
-streamlit-calendar
-streamlit
-pandas

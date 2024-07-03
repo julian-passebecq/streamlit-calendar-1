@@ -1,98 +1,91 @@
 import random
-from deap import base, creator, tools, algorithms
-import numpy as np
-from datetime import datetime, timedelta
+from typing import List, Dict
+import pandas as pd
 
-# Define global constants
-SHIFT_DURATION = 8  # hours
-BREAK_DURATION = 1  # hour
-MIN_REST_BETWEEN_SHIFTS = 8  # hours
-TRANSPORT_TIME_MIN = 0.5  # hours
-TRANSPORT_TIME_MAX = 1  # hour
+def initialize_population(population_size: int, chromosome_length: int) -> List[List[int]]:
+    return [random.choices(range(-1, 5), k=chromosome_length) for _ in range(population_size)]
 
-creator.create("FitnessMax", base.Fitness, weights=(1.0,))
-creator.create("Individual", list, fitness=creator.FitnessMax)
-
-def initialize_individual(agents, missions):
-    return creator.Individual([random.choice(agents.index) if random.random() > 0.2 else -1 for _ in range(len(missions))])
-
-def evaluate(individual, agents, missions):
-    schedule = {agent: [] for agent in agents.index}
+def fitness(chromosome: List[int], agents: pd.DataFrame, missions: pd.DataFrame) -> float:
     score = 0
-    
-    for i, agent_id in enumerate(individual):
+    agent_schedules = {i: [] for i in range(len(agents))}
+
+    for i, agent_id in enumerate(chromosome):
         if agent_id == -1:  # Unassigned mission
             score -= 10
             continue
-        
+
         mission = missions.iloc[i]
         agent = agents.iloc[agent_id]
-        
+
         # Check if agent has required skill
         if mission['Required Skill'] != 'None' and not agent[mission['Required Skill']]:
             score -= 5
         else:
             score += 1
-        
+
         # Check for overlapping missions
-        mission_start = datetime.combine(datetime.today(), mission['Start Time'])
-        mission_end = mission_start + timedelta(hours=mission['Duration'])
-        
-        for other_mission in schedule[agent_id]:
-            other_start = datetime.combine(datetime.today(), other_mission['Start Time'])
-            other_end = other_start + timedelta(hours=other_mission['Duration'])
-            
-            if (mission_start < other_end and mission_end > other_start) or \
-               (other_start < mission_end and other_end > mission_start):
+        for other_mission in agent_schedules[agent_id]:
+            if (mission['Start Time'] < other_mission['End Time'] and 
+                mission['Start Time'] + mission['Duration'] > other_mission['Start Time']):
                 score -= 20
                 break
         else:
-            schedule[agent_id].append(mission)
+            agent_schedules[agent_id].append({
+                'Start Time': mission['Start Time'],
+                'End Time': mission['Start Time'] + mission['Duration']
+            })
             score += 2
-    
-    # Check for minimum rest between shifts
-    for agent_schedule in schedule.values():
-        sorted_schedule = sorted(agent_schedule, key=lambda x: x['Start Time'])
-        for i in range(len(sorted_schedule) - 1):
-            current_end = datetime.combine(datetime.today(), sorted_schedule[i]['Start Time']) + timedelta(hours=sorted_schedule[i]['Duration'])
-            next_start = datetime.combine(datetime.today(), sorted_schedule[i+1]['Start Time'])
-            if (next_start - current_end).total_seconds() / 3600 < MIN_REST_BETWEEN_SHIFTS:
-                score -= 15
-    
-    return (score,)
 
-def mutate(individual, indpb):
-    for i in range(len(individual)):
-        if random.random() < indpb:
-            individual[i] = random.randint(-1, len(agents) - 1)
-    return individual,
+    return score
 
-def generate_schedule(agents, missions, population_size, generations, mutation_rate, crossover_rate):
-    toolbox = base.Toolbox()
-    toolbox.register("individual", initialize_individual, agents, missions)
-    toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-    toolbox.register("evaluate", evaluate, agents=agents, missions=missions)
-    toolbox.register("mate", tools.cxTwoPoint)
-    toolbox.register("mutate", mutate, indpb=mutation_rate)
-    toolbox.register("select", tools.selTournament, tournsize=3)
+def crossover(parent1: List[int], parent2: List[int]) -> tuple:
+    split = random.randint(0, len(parent1) - 1)
+    child1 = parent1[:split] + parent2[split:]
+    child2 = parent2[:split] + parent1[split:]
+    return child1, child2
 
-    population = toolbox.population(n=population_size)
+def mutate(chromosome: List[int], mutation_rate: float, num_agents: int) -> List[int]:
+    return [random.randint(-1, num_agents - 1) if random.random() < mutation_rate else gene for gene in chromosome]
+
+def genetic_algorithm(agents: pd.DataFrame, missions: pd.DataFrame, population_size: int, generations: int, mutation_rate: float, crossover_rate: float) -> List[int]:
+    population = initialize_population(population_size, len(missions))
     
-    algorithms.eaSimple(population, toolbox, cxpb=crossover_rate, mutpb=mutation_rate, 
-                        ngen=generations, stats=None, halloffame=None, verbose=False)
-    
-    best_individual = tools.selBest(population, k=1)[0]
-    return best_individual
+    for _ in range(generations):
+        # Evaluate fitness
+        fitness_scores = [fitness(chrom, agents, missions) for chrom in population]
+        
+        # Select parents
+        parents = random.choices(population, weights=fitness_scores, k=len(population))
+        
+        # Create next generation
+        next_generation = []
+        for i in range(0, len(parents), 2):
+            if i + 1 < len(parents):
+                if random.random() < crossover_rate:
+                    child1, child2 = crossover(parents[i], parents[i+1])
+                else:
+                    child1, child2 = parents[i], parents[i+1]
+                next_generation.extend([mutate(child1, mutation_rate, len(agents)),
+                                        mutate(child2, mutation_rate, len(agents))])
+        
+        population = next_generation
 
-def decode_schedule(individual, agents, missions):
-    schedule = {agent: [] for agent in agents.index}
-    for i, agent_id in enumerate(individual):
+    # Return the best solution
+    best_solution = max(population, key=lambda chrom: fitness(chrom, agents, missions))
+    return best_solution
+
+def generate_schedule(agents: pd.DataFrame, missions: pd.DataFrame, population_size: int, generations: int, mutation_rate: float, crossover_rate: float) -> Dict[int, List[Dict]]:
+    best_solution = genetic_algorithm(agents, missions, population_size, generations, mutation_rate, crossover_rate)
+    
+    schedule = {i: [] for i in range(len(agents))}
+    for i, agent_id in enumerate(best_solution):
         if agent_id != -1:
-            schedule[agent_id].append(missions.iloc[i])
+            mission = missions.iloc[i]
+            schedule[agent_id].append({
+                'Client': mission['Client'],
+                'Type': mission['Type'],
+                'Start Time': mission['Start Time'],
+                'Duration': mission['Duration']
+            })
+    
     return schedule
-
-# This function will be called from the schedule generation page
-def generate_and_optimize_schedule(agents, missions, population_size, generations, mutation_rate, crossover_rate):
-    best_individual = generate_schedule(agents, missions, population_size, generations, mutation_rate, crossover_rate)
-    optimized_schedule = decode_schedule(best_individual, agents, missions)
-    return optimized_schedule

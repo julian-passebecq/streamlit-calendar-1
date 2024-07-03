@@ -15,7 +15,6 @@ meeting_types = {
     "Monitoring": {"color": "#99CCFF", "duration": 2}
 }
 
-
 # Calendar page functions
 def generate_meeting(date, client, is_night=False):
     if is_night:
@@ -40,7 +39,6 @@ def generate_meeting(date, client, is_night=False):
         "is_night": is_night
     }
 
-
 def generate_meetings(start_date, num_clients=5):
     events = []
     for day in range(7):
@@ -58,7 +56,6 @@ def generate_meetings(start_date, num_clients=5):
             else:
                 break
     return events
-
 
 def show_calendar_page():
     st.title("Calendar View")
@@ -155,13 +152,11 @@ def show_calendar_page():
         st.session_state.calendar_events = generate_meetings(start_of_week)
         st.experimental_rerun()
 
-
 # Genetic Algorithm classes and functions
 class Agent:
     def __init__(self, id: int, skills: List[str]):
         self.id = id
         self.skills = skills
-
 
 class Meeting:
     def __init__(self, start_slot: int, duration: int, required_skill: str):
@@ -169,26 +164,22 @@ class Meeting:
         self.duration = duration
         self.required_skill = required_skill
 
-
 class Schedule:
     def __init__(self, agents: List[Agent], meetings: List[Meeting]):
         self.agents = agents
         self.meetings = meetings
         self.assignments = {}  # {meeting: agent}
 
-
 def initialize_population(pop_size: int, agents: List[Agent], meetings: List[Meeting]) -> List[Schedule]:
     population = []
     for _ in range(pop_size):
         schedule = Schedule(agents, meetings)
         for meeting in meetings:
-            eligible_agents = [agent for agent in agents if
-                               meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
+            eligible_agents = [agent for agent in agents if meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
             if eligible_agents:
                 schedule.assignments[meeting] = random.choice(eligible_agents)
         population.append(schedule)
     return population
-
 
 def fitness(schedule: Schedule) -> float:
     score = 0
@@ -217,7 +208,6 @@ def fitness(schedule: Schedule) -> float:
 
     return score
 
-
 def crossover(parent1: Schedule, parent2: Schedule) -> Tuple[Schedule, Schedule]:
     child1, child2 = Schedule(parent1.agents, parent1.meetings), Schedule(parent2.agents, parent2.meetings)
     crossover_point = random.randint(0, len(parent1.meetings))
@@ -229,18 +219,14 @@ def crossover(parent1: Schedule, parent2: Schedule) -> Tuple[Schedule, Schedule]
 
     return child1, child2
 
-
 def mutate(schedule: Schedule, mutation_rate: float):
     for meeting in schedule.meetings:
         if random.random() < mutation_rate:
-            eligible_agents = [agent for agent in schedule.agents if
-                               meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
+            eligible_agents = [agent for agent in schedule.agents if meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
             if eligible_agents:
                 schedule.assignments[meeting] = random.choice(eligible_agents)
 
-
-def genetic_algorithm(agents: List[Agent], meetings: List[Meeting], pop_size: int, generations: int,
-                      mutation_rate: float) -> Schedule:
+def genetic_algorithm(agents: List[Agent], meetings: List[Meeting], pop_size: int, generations: int, mutation_rate: float) -> Schedule:
     population = initialize_population(pop_size, agents, meetings)
 
     for _ in range(generations):
@@ -257,7 +243,6 @@ def genetic_algorithm(agents: List[Agent], meetings: List[Meeting], pop_size: in
         population = new_population
 
     return max(population, key=lambda x: fitness(x))
-
 
 def show_genetic_algorithm_page():
     st.title("Genetic Algorithm Scheduling")
@@ -298,7 +283,6 @@ def show_genetic_algorithm_page():
         st.session_state.best_schedule = best_schedule
         st.success("Genetic algorithm completed. View results in the Results page.")
 
-
 def show_results_page():
     st.title("Scheduling Results")
 
@@ -317,7 +301,6 @@ def show_results_page():
 
     # Here you can add more visualizations of the schedule, such as a calendar view or Gantt chart
 
-
 # Main app
 def main():
     st.sidebar.title("Navigation")
@@ -329,7 +312,6 @@ def main():
         show_genetic_algorithm_page()
     elif page == "Results":
         show_results_page()
-
 
 if __name__ == "__main__":
     main()

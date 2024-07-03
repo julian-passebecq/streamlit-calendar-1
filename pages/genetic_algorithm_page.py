@@ -23,7 +23,8 @@ def initialize_population(pop_size: int, agents: List[Agent], meetings: List[Mee
     for _ in range(pop_size):
         schedule = Schedule(agents, meetings)
         for meeting in meetings:
-            eligible_agents = [agent for agent in agents if meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
+            eligible_agents = [agent for agent in agents if
+                               meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
             if eligible_agents:
                 schedule.assignments[meeting] = random.choice(eligible_agents)
         population.append(schedule)
@@ -70,11 +71,13 @@ def crossover(parent1: Schedule, parent2: Schedule) -> Tuple[Schedule, Schedule]
 def mutate(schedule: Schedule, mutation_rate: float):
     for meeting in schedule.meetings:
         if random.random() < mutation_rate:
-            eligible_agents = [agent for agent in schedule.agents if meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
+            eligible_agents = [agent for agent in schedule.agents if
+                               meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
             if eligible_agents:
                 schedule.assignments[meeting] = random.choice(eligible_agents)
 
-def genetic_algorithm(agents: List[Agent], meetings: List[Meeting], pop_size: int, generations: int, mutation_rate: float) -> Schedule:
+def genetic_algorithm(agents: List[Agent], meetings: List[Meeting], pop_size: int, generations: int,
+                      mutation_rate: float) -> Schedule:
     population = initialize_population(pop_size, agents, meetings)
 
     for _ in range(generations):

@@ -20,14 +20,14 @@ def generate_meeting(date, client, is_night=False, day_shift_1_start, day_shift_
         else:
             start_hour = random.randint(day_shift_2_start.hour, day_shift_2_end.hour - 1)
     
-    start_time = datetime.time(hour=start_hour)
+    start_time = datetime.time(hour=start_hour, minute=random.choice([0, 30]))
     duration = datetime.timedelta(hours=meeting_types[meeting_type]["duration"])
     end_time = (datetime.datetime.combine(date, start_time) + duration).time()
     
     return {
         "title": f"Client {client}: {meeting_type}" + (" (Night)" if is_night else ""),
-        "start": f"{date}T{start_time}",
-        "end": f"{date}T{end_time}",
+        "start": f"{date}T{start_time.strftime('%H:%M:%S')}",
+        "end": f"{date}T{end_time.strftime('%H:%M:%S')}",
         "backgroundColor": meeting_types[meeting_type]["color"],
         "borderColor": meeting_types[meeting_type]["color"],
         "client": f"Client {client}",

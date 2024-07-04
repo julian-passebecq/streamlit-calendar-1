@@ -9,7 +9,6 @@ st.title("Meeting Generation Calendar")
 # Sidebar for calendar settings
 st.sidebar.title("Calendar Settings")
 num_clients = st.sidebar.number_input("Number of Clients", min_value=1, max_value=20, value=5)
-meetings_per_day = st.sidebar.slider("Meetings per day", 1, 20, 5)
 
 # Meeting duration settings
 st.sidebar.subheader("Meeting Durations (hours)")

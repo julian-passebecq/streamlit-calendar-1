@@ -14,7 +14,11 @@ num_clients = st.sidebar.number_input("Number of Clients", min_value=1, max_valu
 st.sidebar.subheader("Meeting Durations (hours)")
 for meeting_type in meeting_types:
     meeting_types[meeting_type]["duration"] = st.sidebar.slider(
-        f"{meeting_type} duration", 1.0, 3.0, meeting_types[meeting_type]["duration"], 0.5
+        f"{meeting_type} duration",
+        min_value=1.0,
+        max_value=3.0,
+        value=float(meeting_types[meeting_type]["duration"]),
+        step=0.5
     )
 
 # Workload percentage

@@ -4,7 +4,7 @@ from streamlit_calendar import calendar
 import datetime
 from utils.meeting_utils import generate_meetings, meeting_types
 
-st.title("Calendar View")
+st.title("Meeting Generation Calendar")
 
 # Sidebar for calendar settings
 st.sidebar.title("Calendar Settings")
@@ -22,7 +22,7 @@ with col2:
 night_shift_start = st.sidebar.time_input("Night Shift Start", datetime.time(22, 0))
 night_shift_end = st.sidebar.time_input("Night Shift End", datetime.time(7, 0))
 
-if 'calendar_events' not in st.session_state:
+if 'calendar_events' not in st.session_state or st.button("Generate New Events"):
     today = datetime.date.today()
     start_of_week = today - datetime.timedelta(days=today.weekday())
     st.session_state.calendar_events = generate_meetings(start_of_week, num_clients, meetings_per_day,
@@ -107,12 +107,3 @@ for day in range(7):
 
 summary_df = pd.DataFrame(summary_data)
 st.table(summary_df)
-
-if st.button("Generate New Events"):
-    today = datetime.date.today()
-    start_of_week = today - datetime.timedelta(days=today.weekday())
-    st.session_state.calendar_events = generate_meetings(start_of_week, num_clients, meetings_per_day,
-                                                         day_shift_1_start, day_shift_1_end,
-                                                         day_shift_2_start, day_shift_2_end,
-                                                         night_shift_start, night_shift_end)
-    st.experimental_rerun()

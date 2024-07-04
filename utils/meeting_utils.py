@@ -8,8 +8,9 @@ meeting_types = {
     "Monitoring": {"color": "#99CCFF", "duration": 2}
 }
 
-def generate_meeting(date, client, is_night=False, day_shift_1_start, day_shift_1_end,
-                     day_shift_2_start, day_shift_2_end, night_shift_start, night_shift_end):
+def generate_meeting(date, client, is_night=False, day_shift_1_start=datetime.time(7, 0), day_shift_1_end=datetime.time(16, 0),
+                     day_shift_2_start=datetime.time(13, 0), day_shift_2_end=datetime.time(22, 0),
+                     night_shift_start=datetime.time(22, 0), night_shift_end=datetime.time(7, 0)):
     if is_night:
         meeting_type = random.choice(["Security", "Monitoring"])
         start_hour = random.randint(night_shift_start.hour, 23) if night_shift_start.hour != 0 else random.randint(0, night_shift_end.hour)
@@ -46,4 +47,7 @@ def generate_meetings(start_date, num_clients=5, meetings_per_day=5,
             client = random.randint(1, num_clients)
             is_night = random.choice([True, False])
             events.append(generate_meeting(current_date, client, is_night,
-                                           day_shift_1_start, day_shift_
+                                           day_shift_1_start, day_shift_1_end,
+                                           day_shift_2_start, day_shift_2_end,
+                                           night_shift_start, night_shift_end))
+    return events

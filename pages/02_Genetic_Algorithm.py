@@ -1,6 +1,7 @@
 import streamlit as st
 import random
 import plotly.graph_objects as go
+import datetime
 from utils.genetic_algorithm import Agent, Meeting, genetic_algorithm, fitness, initialize_population
 
 st.title("Genetic Algorithm Scheduling")
@@ -20,7 +21,7 @@ calendar_events = st.session_state.calendar_events
 # Convert calendar events to meetings
 meetings = [
     Meeting(
-        start_slot=int(event['start'].split('T')[1].split(':')[0]) * 2 + (1 if event['start'].split('T')[1].split(':')[1] == '30' else 0),
+        start_slot=int(datetime.datetime.fromisoformat(event['start']).hour * 2 + (datetime.datetime.fromisoformat(event['start']).minute // 30)),
         duration=int((datetime.datetime.fromisoformat(event['end']) - datetime.datetime.fromisoformat(event['start'])).total_seconds() / 1800),
         required_skill=event['type']
     )
@@ -62,4 +63,27 @@ if st.button("Run Genetic Algorithm"):
 
         progress_bar.progress((i + 1) / generations)
 
-    st.session_state.best_schedule
+    st.session_state.best_schedule = best_schedule
+    st.session_state.best_fitness_history = best_fitness_history
+    st.session_state.avg_fitness_history = avg_fitness_history
+
+    # Visualize genetic algorithm process
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(y=best_fitness_history, mode='lines', name='Best Fitness'))
+    fig.add_trace(go.Scatter(y=avg_fitness_history, mode='lines', name='Average Fitness'))
+    fig.update_layout(title='Fitness History', xaxis_title='Generation', yaxis_title='Fitness Score')
+    st.plotly_chart(fig)
+
+    st.success("Genetic algorithm completed. View results in the Results page.")
+
+# Visualize chromosome
+if 'best_schedule' in st.session_state:
+    st.subheader("Best Schedule Chromosome")
+    chromosome = []
+    for meeting in meetings:
+        agent = st.session_state.best_schedule.assignments.get(meeting, None)
+        chromosome.append(agent.id if agent else -1)
+    
+    fig = go.Figure(data=[go.Bar(y=chromosome, x=[f"M{i}" for i in range(len(chromosome))])])
+    fig.update_layout(title='Chromosome Representation', xaxis_title='Meetings', yaxis_title='Agent ID')
+    st.plotly_chart(fig)

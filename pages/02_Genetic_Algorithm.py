@@ -42,6 +42,13 @@ penalty_consecutive = st.number_input("Consecutive Meetings Penalty", value=25, 
 penalty_overwork = st.number_input("Overwork Penalty (per slot)", value=10, step=1)
 penalty_long_shift = st.number_input("Long Shift Penalty", value=50, step=10)
 
+# Store penalty values in session state
+st.session_state.penalty_wrong_skill = penalty_wrong_skill
+st.session_state.penalty_overlap = penalty_overlap
+st.session_state.penalty_consecutive = penalty_consecutive
+st.session_state.penalty_overwork = penalty_overwork
+st.session_state.penalty_long_shift = penalty_long_shift
+
 # Run genetic algorithm
 if st.button("Run Genetic Algorithm"):
     progress_bar = st.progress(0)

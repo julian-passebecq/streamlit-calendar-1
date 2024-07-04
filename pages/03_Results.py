@@ -11,8 +11,15 @@ else:
     best_fitness_history = st.session_state.best_fitness_history
     avg_fitness_history = st.session_state.avg_fitness_history
 
+    # Retrieve penalty values from session state or use default values
+    penalty_wrong_skill = st.session_state.get('penalty_wrong_skill', 100)
+    penalty_overlap = st.session_state.get('penalty_overlap', 50)
+    penalty_consecutive = st.session_state.get('penalty_consecutive', 25)
+    penalty_overwork = st.session_state.get('penalty_overwork', 10)
+    penalty_long_shift = st.session_state.get('penalty_long_shift', 50)
+
     st.subheader("Best Schedule")
-    st.write(f"Fitness Score: {fitness(best_schedule)}")
+    st.write(f"Fitness Score: {fitness(best_schedule, penalty_wrong_skill, penalty_overlap, penalty_consecutive, penalty_overwork, penalty_long_shift)}")
 
     for meeting, agent in best_schedule.assignments.items():
         st.write(

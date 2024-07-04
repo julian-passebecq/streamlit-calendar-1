@@ -9,7 +9,17 @@ st.title("Meeting Generation Calendar")
 # Sidebar for calendar settings
 st.sidebar.title("Calendar Settings")
 num_clients = st.sidebar.number_input("Number of Clients", min_value=1, max_value=20, value=5)
-meetings_per_day = st.sidebar.slider("Meetings per day", 1, 10, 5)
+meetings_per_day = st.sidebar.slider("Meetings per day", 1, 20, 5)
+
+# Meeting duration settings
+st.sidebar.subheader("Meeting Durations (hours)")
+for meeting_type in meeting_types:
+    meeting_types[meeting_type]["duration"] = st.sidebar.slider(
+        f"{meeting_type} duration", 1.0, 3.0, meeting_types[meeting_type]["duration"], 0.5
+    )
+
+# Workload percentage
+workload_percentage = st.sidebar.slider("Workload Percentage", 50, 150, 100, 5)
 
 col1, col2 = st.sidebar.columns(2)
 with col1:
@@ -22,13 +32,24 @@ with col2:
 night_shift_start = st.sidebar.time_input("Night Shift Start", datetime.time(22, 0))
 night_shift_end = st.sidebar.time_input("Night Shift End", datetime.time(7, 0))
 
-if 'calendar_events' not in st.session_state or st.button("Generate New Events"):
+if 'agents' not in st.session_state:
+    st.warning("Please configure agents in the Agent Configuration page first.")
+    st.stop()
+
+num_agents = len(st.session_state.agents)
+total_agent_hours = num_agents * 8 * 5  # 8 hours per day, 5 days a week
+adjusted_hours = total_agent_hours * (workload_percentage / 100)
+
+if 'calendar_events' not in st.session_state or st.button("Generate New Calendar"):
     today = datetime.date.today()
     start_of_week = today - datetime.timedelta(days=today.weekday())
-    st.session_state.calendar_events = generate_meetings(start_of_week, num_clients, meetings_per_day,
-                                                         day_shift_1_start, day_shift_1_end,
-                                                         day_shift_2_start, day_shift_2_end,
-                                                         night_shift_start, night_shift_end)
+    st.session_state.calendar_events = generate_meetings(
+        start_of_week, num_clients, adjusted_hours,
+        day_shift_1_start, day_shift_1_end,
+        day_shift_2_start, day_shift_2_end,
+        night_shift_start, night_shift_end,
+        meeting_types
+    )
 
 all_clients = sorted(set(event['client'] for event in st.session_state.calendar_events))
 all_types = sorted(list(meeting_types.keys()))

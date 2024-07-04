@@ -10,20 +10,22 @@ if 'agents' not in st.session_state:
     st.warning("Please configure agents in the Agent Configuration page first.")
     st.stop()
 
+if 'calendar_events' not in st.session_state:
+    st.warning("Please generate a calendar in the Calendar page first.")
+    st.stop()
+
 agents = st.session_state.agents
+calendar_events = st.session_state.calendar_events
 
-# Sidebar for genetic algorithm settings
-st.sidebar.title("Genetic Algorithm Settings")
-num_meetings = st.sidebar.number_input("Number of Meetings", min_value=1, max_value=50, value=20)
-
-# Generate meetings based on agent capacity and skills
-total_capacity = len(agents) * 5  # Assuming 5 hours of meetings per agent per day
-meetings = []
-for _ in range(min(num_meetings, total_capacity)):
-    required_skill = random.choice(["Fire", "Security", "Maintenance", "Monitoring"])
-    start_slot = random.randint(0, 47)
-    duration = random.randint(1, 4)
-    meetings.append(Meeting(start_slot, duration, required_skill))
+# Convert calendar events to meetings
+meetings = [
+    Meeting(
+        start_slot=int(event['start'].split('T')[1].split(':')[0]) * 2 + (1 if event['start'].split('T')[1].split(':')[1] == '30' else 0),
+        duration=int((datetime.datetime.fromisoformat(event['end']) - datetime.datetime.fromisoformat(event['start'])).total_seconds() / 1800),
+        required_skill=event['type']
+    )
+    for event in calendar_events
+]
 
 # Genetic Algorithm Parameters
 st.subheader("Genetic Algorithm Parameters")
@@ -60,27 +62,4 @@ if st.button("Run Genetic Algorithm"):
 
         progress_bar.progress((i + 1) / generations)
 
-    st.session_state.best_schedule = best_schedule
-    st.session_state.best_fitness_history = best_fitness_history
-    st.session_state.avg_fitness_history = avg_fitness_history
-
-    # Visualize genetic algorithm process
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(y=best_fitness_history, mode='lines', name='Best Fitness'))
-    fig.add_trace(go.Scatter(y=avg_fitness_history, mode='lines', name='Average Fitness'))
-    fig.update_layout(title='Fitness History', xaxis_title='Generation', yaxis_title='Fitness Score')
-    st.plotly_chart(fig)
-
-    st.success("Genetic algorithm completed. View results in the Results page.")
-
-# Visualize chromosome
-if 'best_schedule' in st.session_state:
-    st.subheader("Best Schedule Chromosome")
-    chromosome = []
-    for meeting in meetings:
-        agent = st.session_state.best_schedule.assignments.get(meeting, None)
-        chromosome.append(agent.id if agent else -1)
-    
-    fig = go.Figure(data=[go.Bar(y=chromosome, x=[f"M{i}" for i in range(len(chromosome))])])
-    fig.update_layout(title='Chromosome Representation', xaxis_title='Meetings', yaxis_title='Agent ID')
-    st.plotly_chart(fig)
+    st.session_state.best_schedule

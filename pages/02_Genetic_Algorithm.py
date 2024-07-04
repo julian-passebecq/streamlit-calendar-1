@@ -50,7 +50,7 @@ if st.button("Run Genetic Algorithm"):
     population = initialize_population(pop_size, agents, meetings)
 
     for i in range(generations):
-        best_schedule = genetic_algorithm(agents, meetings, pop_size, 1, mutation_rate,
+        best_schedule = genetic_algorithm(agents, meetings, pop_size, generations, mutation_rate,
                                           penalty_wrong_skill, penalty_overlap, penalty_consecutive,
                                           penalty_overwork, penalty_long_shift)
         population_fitness = [fitness(schedule, penalty_wrong_skill, penalty_overlap, penalty_consecutive,

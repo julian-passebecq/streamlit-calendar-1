@@ -30,30 +30,31 @@ def initialize_population(pop_size: int, agents: List[Agent], meetings: List[Mee
         population.append(schedule)
     return population
 
-def fitness(schedule: Schedule) -> float:
+def fitness(schedule: Schedule, penalty_wrong_skill: int, penalty_overlap: int, penalty_consecutive: int,
+            penalty_overwork: int, penalty_long_shift: int) -> float:
     score = 0
     agent_schedules = {agent: [0] * 48 for agent in schedule.agents}  # 48 30-minute slots
 
     for meeting, agent in schedule.assignments.items():
         if meeting.required_skill not in agent.skills and meeting.required_skill != 'Monitoring':
-            score -= 100
+            score -= penalty_wrong_skill
 
         for slot in range(meeting.start_slot, min(meeting.start_slot + meeting.duration, 48)):
             if agent_schedules[agent][slot] == 1:
-                score -= 50
+                score -= penalty_overlap
             agent_schedules[agent][slot] = 1
 
         if meeting.start_slot > 0 and agent_schedules[agent][meeting.start_slot - 1] == 1:
-            score -= 25
+            score -= penalty_consecutive
 
-    for agent, schedule in agent_schedules.items():
-        work_slots = sum(schedule)
+    for agent, agent_schedule in agent_schedules.items():
+        work_slots = sum(agent_schedule)
         if work_slots > 16:  # 8 hours
-            score -= (work_slots - 16) * 10
+            score -= (work_slots - 16) * penalty_overwork
 
-        work_periods = [sum(schedule[i:i + 6]) for i in range(0, len(schedule), 6)]
+        work_periods = [sum(agent_schedule[i:i + 6]) for i in range(0, len(agent_schedule), 6)]
         if max(work_periods, default=0) > 3:  # More than 3 hours without a break
-            score -= 50
+            score -= penalty_long_shift
 
     return score
 
@@ -77,11 +78,14 @@ def mutate(schedule: Schedule, mutation_rate: float):
                 schedule.assignments[meeting] = random.choice(eligible_agents)
 
 def genetic_algorithm(agents: List[Agent], meetings: List[Meeting], pop_size: int, generations: int,
-                      mutation_rate: float) -> Schedule:
+                      mutation_rate: float, penalty_wrong_skill: int, penalty_overlap: int, penalty_consecutive: int,
+                      penalty_overwork: int, penalty_long_shift: int) -> Schedule:
     population = initialize_population(pop_size, agents, meetings)
 
     for _ in range(generations):
-        population = sorted(population, key=lambda x: fitness(x), reverse=True)
+        population = sorted(population, key=lambda x: fitness(x, penalty_wrong_skill, penalty_overlap,
+                                                              penalty_consecutive, penalty_overwork,
+                                                              penalty_long_shift), reverse=True)
         new_population = population[:2]  # Keep the two best schedules
 
         while len(new_population) < pop_size:
@@ -93,4 +97,5 @@ def genetic_algorithm(agents: List[Agent], meetings: List[Meeting], pop_size: in
 
         population = new_population
 
-    return max(population, key=lambda x: fitness(x))
+    return max(population, key=lambda x: fitness(x, penalty_wrong_skill, penalty_overlap,
+                                                 penalty_consecutive, penalty_overwork, penalty_long_shift))

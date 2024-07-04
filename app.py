@@ -1,82 +1,73 @@
-#app.py
 import streamlit as st
+import pandas as pd
+import plotly.graph_objects as go
 from streamlit_calendar import calendar
 import datetime
 import random
-import pandas as pd
-from typing import List, Dict, Tuple
+from utils.meeting_utils import generate_meetings, meeting_types
+from utils.genetic_algorithm import Agent, Meeting, Schedule, genetic_algorithm, fitness
 
-st.set_page_config(page_title="Scheduling App", layout="wide")
+st.set_page_config(page_title="Security Firm Scheduling App", layout="wide")
 
-# Define meeting types and their properties
-meeting_types = {
-    "Maintenance": {"color": "#FF9999", "duration": 1},
-    "FireTest": {"color": "#FFCC99", "duration": 2},
-    "Security": {"color": "#99FF99", "duration": 3},
-    "Monitoring": {"color": "#99CCFF", "duration": 2}
-}
+# Sidebar for global settings
+st.sidebar.title("Global Settings")
+num_agents = st.sidebar.number_input("Number of Agents", min_value=1, max_value=10, value=5)
+num_clients = st.sidebar.number_input("Number of Clients", min_value=1, max_value=20, value=5)
 
+# Function to generate agents based on user input
+def generate_agents(num_agents):
+    skills = ["Fire", "Security", "Maintenance"]
+    agents = []
+    for i in range(num_agents):
+        agent_skills = st.sidebar.multiselect(f"Skills for Agent {i+1}", skills, default=random.sample(skills, 1))
+        agents.append(Agent(i, agent_skills))
+    return agents
 
-# Calendar page functions
-def generate_meeting(date, client, is_night=False):
-    if is_night:
-        meeting_type = random.choice(["Security", "Monitoring"])
-        start_hour = random.randint(20, 23) if meeting_type == "Security" else random.randint(22, 23)
-    else:
-        meeting_type = random.choice(list(meeting_types.keys()))
-        start_hour = random.randint(8, 19)
+# Generate agents
+agents = generate_agents(num_agents)
 
-    start_time = datetime.time(hour=start_hour)
-    duration = datetime.timedelta(hours=meeting_types[meeting_type]["duration"])
-    end_time = (datetime.datetime.combine(date, start_time) + duration).time()
+# Main app
+def main():
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio("Go to", ["Calendar", "Genetic Algorithm", "Results"])
 
-    return {
-        "title": f"Client {client}: {meeting_type}" + (" (Night)" if is_night else ""),
-        "start": f"{date}T{start_time}",
-        "end": f"{date}T{end_time}",
-        "backgroundColor": meeting_types[meeting_type]["color"],
-        "borderColor": meeting_types[meeting_type]["color"],
-        "client": f"Client {client}",
-        "type": meeting_type,
-        "is_night": is_night
-    }
-
-
-def generate_meetings(start_date, num_clients=5):
-    events = []
-    for day in range(7):
-        current_date = start_date + datetime.timedelta(days=day)
-        daily_hours = 0
-        while daily_hours < 40:  # 5 agents * 8 hours
-            client = random.randint(1, num_clients)
-            is_night = random.choice(
-                [True, False]) if daily_hours >= 32 else False  # Allow night meetings only in the last 8 hours
-            meeting = generate_meeting(current_date, client, is_night)
-            meeting_duration = meeting_types[meeting['type']]['duration']
-            if daily_hours + meeting_duration <= 40:
-                events.append(meeting)
-                daily_hours += meeting_duration
-            else:
-                break
-    return events
-
+    if page == "Calendar":
+        show_calendar_page()
+    elif page == "Genetic Algorithm":
+        show_genetic_algorithm_page()
+    elif page == "Results":
+        show_results_page()
 
 def show_calendar_page():
     st.title("Calendar View")
 
+    # Calendar settings
+    col1, col2 = st.columns(2)
+    with col1:
+        day_shift_1_start = st.time_input("Day Shift 1 Start", datetime.time(7, 0))
+        day_shift_1_end = st.time_input("Day Shift 1 End", datetime.time(16, 0))
+    with col2:
+        day_shift_2_start = st.time_input("Day Shift 2 Start", datetime.time(13, 0))
+        day_shift_2_end = st.time_input("Day Shift 2 End", datetime.time(22, 0))
+
+    night_shift_start = st.time_input("Night Shift Start", datetime.time(22, 0))
+    night_shift_end = st.time_input("Night Shift End", datetime.time(7, 0))
+
+    meetings_per_day = st.slider("Meetings per day", 1, 10, 5)
+
     if 'calendar_events' not in st.session_state:
         today = datetime.date.today()
         start_of_week = today - datetime.timedelta(days=today.weekday())
-        st.session_state.calendar_events = generate_meetings(start_of_week)
+        st.session_state.calendar_events = generate_meetings(start_of_week, num_clients, meetings_per_day,
+                                                             day_shift_1_start, day_shift_1_end,
+                                                             day_shift_2_start, day_shift_2_end,
+                                                             night_shift_start, night_shift_end)
 
     all_clients = sorted(set(event['client'] for event in st.session_state.calendar_events))
     all_types = sorted(list(meeting_types.keys()))
 
-    col1, col2 = st.columns(2)
-    with col1:
-        selected_clients = st.multiselect("Select Clients", all_clients, default=all_clients)
-    with col2:
-        selected_types = st.multiselect("Select Appointment Types", all_types, default=all_types)
+    selected_clients = st.multiselect("Select Clients", all_clients, default=all_clients)
+    selected_types = st.multiselect("Select Appointment Types", all_types, default=all_types)
 
     filtered_events = [
         event for event in st.session_state.calendar_events
@@ -143,8 +134,8 @@ def show_calendar_page():
             "Date": current_date.strftime("%Y-%m-%d"),
             "Total Hours": total_hours,
             "Required Agents": required_agents,
-            "Day Appointments (6AM-8PM)": day_appointments,
-            "Night Appointments (After 8PM)": night_appointments
+            "Day Appointments": day_appointments,
+            "Night Appointments": night_appointments
         })
 
     summary_df = pd.DataFrame(summary_data)
@@ -153,124 +144,14 @@ def show_calendar_page():
     if st.button("Generate New Events"):
         today = datetime.date.today()
         start_of_week = today - datetime.timedelta(days=today.weekday())
-        st.session_state.calendar_events = generate_meetings(start_of_week)
+        st.session_state.calendar_events = generate_meetings(start_of_week, num_clients, meetings_per_day,
+                                                             day_shift_1_start, day_shift_1_end,
+                                                             day_shift_2_start, day_shift_2_end,
+                                                             night_shift_start, night_shift_end)
         st.experimental_rerun()
-
-
-# Genetic Algorithm classes and functions
-class Agent:
-    def __init__(self, id: int, skills: List[str]):
-        self.id = id
-        self.skills = skills
-
-
-class Meeting:
-    def __init__(self, start_slot: int, duration: int, required_skill: str):
-        self.start_slot = start_slot
-        self.duration = duration
-        self.required_skill = required_skill
-
-
-class Schedule:
-    def __init__(self, agents: List[Agent], meetings: List[Meeting]):
-        self.agents = agents
-        self.meetings = meetings
-        self.assignments = {}  # {meeting: agent}
-
-
-def initialize_population(pop_size: int, agents: List[Agent], meetings: List[Meeting]) -> List[Schedule]:
-    population = []
-    for _ in range(pop_size):
-        schedule = Schedule(agents, meetings)
-        for meeting in meetings:
-            eligible_agents = [agent for agent in agents if
-                               meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
-            if eligible_agents:
-                schedule.assignments[meeting] = random.choice(eligible_agents)
-        population.append(schedule)
-    return population
-
-
-def fitness(schedule: Schedule) -> float:
-    score = 0
-    agent_schedules = {agent: [0] * (24 * 2) for agent in schedule.agents}  # 48 30-minute slots
-
-    for meeting, agent in schedule.assignments.items():
-        if meeting.required_skill not in agent.skills and meeting.required_skill != 'Monitoring':
-            score -= 100
-
-        for slot in range(meeting.start_slot, meeting.start_slot + meeting.duration):
-            if agent_schedules[agent][slot] == 1:
-                score -= 50
-            agent_schedules[agent][slot] = 1
-
-        if meeting.start_slot > 0 and agent_schedules[agent][meeting.start_slot - 1] == 1:
-            score -= 25
-
-    for agent, schedule in agent_schedules.items():
-        work_slots = sum(schedule)
-        if work_slots > 16:  # 8 hours
-            score -= (work_slots - 16) * 10
-
-        work_periods = [sum(schedule[i:i + 6]) for i in range(0, len(schedule), 6)]
-        if max(work_periods) > 3:  # More than 3 hours without a break
-            score -= 50
-
-    return score
-
-
-def crossover(parent1: Schedule, parent2: Schedule) -> Tuple[Schedule, Schedule]:
-    child1, child2 = Schedule(parent1.agents, parent1.meetings), Schedule(parent2.agents, parent2.meetings)
-    crossover_point = random.randint(0, len(parent1.meetings))
-
-    child1.assignments = {**dict(list(parent1.assignments.items())[:crossover_point]),
-                          **dict(list(parent2.assignments.items())[crossover_point:])}
-    child2.assignments = {**dict(list(parent2.assignments.items())[:crossover_point]),
-                          **dict(list(parent1.assignments.items())[crossover_point:])}
-
-    return child1, child2
-
-
-def mutate(schedule: Schedule, mutation_rate: float):
-    for meeting in schedule.meetings:
-        if random.random() < mutation_rate:
-            eligible_agents = [agent for agent in schedule.agents if
-                               meeting.required_skill in agent.skills or meeting.required_skill == 'Monitoring']
-            if eligible_agents:
-                schedule.assignments[meeting] = random.choice(eligible_agents)
-
-
-def genetic_algorithm(agents: List[Agent], meetings: List[Meeting], pop_size: int, generations: int,
-                      mutation_rate: float) -> Schedule:
-    population = initialize_population(pop_size, agents, meetings)
-
-    for _ in range(generations):
-        population = sorted(population, key=lambda x: fitness(x), reverse=True)
-        new_population = population[:2]  # Keep the two best schedules
-
-        while len(new_population) < pop_size:
-            parent1, parent2 = random.sample(population[:pop_size // 2], 2)
-            child1, child2 = crossover(parent1, parent2)
-            mutate(child1, mutation_rate)
-            mutate(child2, mutation_rate)
-            new_population.extend([child1, child2])
-
-        population = new_population
-
-    return max(population, key=lambda x: fitness(x))
-
 
 def show_genetic_algorithm_page():
     st.title("Genetic Algorithm Scheduling")
-
-    # Predefined agents with fixed skills
-    agents = [
-        Agent(0, ["Fire", "Maintenance"]),
-        Agent(1, ["Security"]),
-        Agent(2, ["Fire"]),
-        Agent(3, ["Security", "Maintenance"]),
-        Agent(4, ["Security", "Fire"])
-    ]
 
     st.subheader("Agent Skills")
     for agent in agents:
@@ -293,12 +174,33 @@ def show_genetic_algorithm_page():
                                           ["Fire", "Security", "Maintenance", "Monitoring"], key=f"skill_{i}")
         meetings.append(Meeting(start_slot, duration, required_skill))
 
+    # Genetic Algorithm Parameters
+    st.subheader("Genetic Algorithm Parameters")
+    pop_size = st.number_input("Population Size", min_value=10, max_value=1000, value=50)
+    generations = st.number_input("Number of Generations", min_value=10, max_value=1000, value=100)
+    mutation_rate = st.slider("Mutation Rate", min_value=0.0, max_value=1.0, value=0.1, step=0.01)
+
     # Run genetic algorithm
     if st.button("Run Genetic Algorithm"):
-        best_schedule = genetic_algorithm(agents, meetings, pop_size=50, generations=100, mutation_rate=0.1)
-        st.session_state.best_schedule = best_schedule
-        st.success("Genetic algorithm completed. View results in the Results page.")
+        progress_bar = st.progress(0)
+        best_fitness_history = []
+        avg_fitness_history = []
 
+        for i in range(generations):
+            best_schedule = genetic_algorithm(agents, meetings, pop_size, 1, mutation_rate)
+            best_fitness = fitness(best_schedule)
+            avg_fitness = sum(fitness(schedule) for schedule in best_schedule) / len(best_schedule)
+
+            best_fitness_history.append(best_fitness)
+            avg_fitness_history.append(avg_fitness)
+
+            progress_bar.progress((i + 1) / generations)
+
+        st.session_state.best_schedule = best_schedule
+        st.session_state.best_fitness_history = best_fitness_history
+        st.session_state.avg_fitness_history = avg_fitness_history
+
+        st.success("Genetic algorithm completed. View results in the Results page.")
 
 def show_results_page():
     st.title("Scheduling Results")
@@ -308,6 +210,8 @@ def show_results_page():
         return
 
     best_schedule = st.session_state.best_schedule
+    best_fitness_history = st.session_state.best_fitness_history
+    avg_fitness_history = st.session_state.avg_fitness_history
 
     st.subheader("Best Schedule")
     st.write(f"Fitness Score: {fitness(best_schedule)}")
@@ -316,21 +220,21 @@ def show_results_page():
         st.write(
             f"Meeting (Slot {meeting.start_slot}, Duration {meeting.duration}, Skill {meeting.required_skill}) assigned to Agent {agent.id}")
 
-    # Here you can add more visualizations of the schedule, such as a calendar view or Gantt chart
+    # Fitness History Plot
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(y=best_fitness_history, mode='lines', name='Best Fitness'))
+    fig.add_trace(go.Scatter(y=avg_fitness_history, mode='lines', name='Average Fitness'))
+    fig.update_layout(title='Fitness History', xaxis_title='Generation', yaxis_title='Fitness Score')
+    st.plotly_chart(fig)
 
+    # Agent Workload
+    agent_workload = {agent.id: 0 for agent in best_schedule.agents}
+    for meeting, agent in best_schedule.assignments.items():
+        agent_workload[agent.id] += meeting.duration
 
-# Main app
-def main():
-    st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", ["Calendar", "Genetic Algorithm", "Results"])
-
-    if page == "Calendar":
-        show_calendar_page()
-    elif page == "Genetic Algorithm":
-        show_genetic_algorithm_page()
-    elif page == "Results":
-        show_results_page()
-
+    fig = go.Figure(data=[go.Bar(x=list(agent_workload.keys()), y=list(agent_workload.values()))])
+    fig.update_layout(title='Agent Workload', xaxis_title='Agent ID', yaxis_title='Total Hours')
+    st.plotly_chart(fig)
 
 if __name__ == "__main__":
     main()

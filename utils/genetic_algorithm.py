@@ -32,13 +32,13 @@ def initialize_population(pop_size: int, agents: List[Agent], meetings: List[Mee
 
 def fitness(schedule: Schedule) -> float:
     score = 0
-    agent_schedules = {agent: [0] * (24 * 2) for agent in schedule.agents}  # 48 30-minute slots
+    agent_schedules = {agent: [0] * 48 for agent in schedule.agents}  # 48 30-minute slots
 
     for meeting, agent in schedule.assignments.items():
         if meeting.required_skill not in agent.skills and meeting.required_skill != 'Monitoring':
             score -= 100
 
-        for slot in range(meeting.start_slot, meeting.start_slot + meeting.duration):
+        for slot in range(meeting.start_slot, min(meeting.start_slot + meeting.duration, 48)):
             if agent_schedules[agent][slot] == 1:
                 score -= 50
             agent_schedules[agent][slot] = 1
@@ -52,7 +52,7 @@ def fitness(schedule: Schedule) -> float:
             score -= (work_slots - 16) * 10
 
         work_periods = [sum(schedule[i:i + 6]) for i in range(0, len(schedule), 6)]
-        if max(work_periods) > 3:  # More than 3 hours without a break
+        if max(work_periods, default=0) > 3:  # More than 3 hours without a break
             score -= 50
 
     return score

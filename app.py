@@ -142,4 +142,99 @@ def show_calendar_page():
     st.table(summary_df)
 
     if st.button("Generate New Events"):
-        today = datetime.date.
+        today = datetime.date.today()
+        start_of_week = today - datetime.timedelta(days=today.weekday())
+        st.session_state.calendar_events = generate_meetings(start_of_week, num_clients, meetings_per_day,
+                                                             day_shift_1_start, day_shift_1_end,
+                                                             day_shift_2_start, day_shift_2_end,
+                                                             night_shift_start, night_shift_end)
+        st.experimental_rerun()
+
+def show_genetic_algorithm_page():
+    st.title("Genetic Algorithm Scheduling")
+
+    st.subheader("Agent Skills")
+    for agent in agents:
+        st.write(f"Agent {agent.id}: {', '.join(agent.skills)}")
+
+    # Input for meetings
+    st.subheader("Meetings")
+    num_meetings = st.number_input("Number of Meetings", min_value=1, max_value=50, value=20)
+    meetings = []
+    for i in range(num_meetings):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            start_slot = st.number_input(f"Meeting {i + 1} Start Slot", min_value=0, max_value=47, value=0,
+                                         key=f"start_{i}")
+        with col2:
+            duration = st.number_input(f"Meeting {i + 1} Duration", min_value=1, max_value=4, value=1,
+                                       key=f"duration_{i}")
+        with col3:
+            required_skill = st.selectbox(f"Meeting {i + 1} Required Skill",
+                                          ["Fire", "Security", "Maintenance", "Monitoring"], key=f"skill_{i}")
+        meetings.append(Meeting(start_slot, duration, required_skill))
+
+    # Genetic Algorithm Parameters
+    st.subheader("Genetic Algorithm Parameters")
+    pop_size = st.number_input("Population Size", min_value=10, max_value=1000, value=50)
+    generations = st.number_input("Number of Generations", min_value=10, max_value=1000, value=100)
+    mutation_rate = st.slider("Mutation Rate", min_value=0.0, max_value=1.0, value=0.1, step=0.01)
+
+    # Run genetic algorithm
+    if st.button("Run Genetic Algorithm"):
+        progress_bar = st.progress(0)
+        best_fitness_history = []
+        avg_fitness_history = []
+
+        for i in range(generations):
+            best_schedule = genetic_algorithm(agents, meetings, pop_size, 1, mutation_rate)
+            best_fitness = fitness(best_schedule)
+            avg_fitness = sum(fitness(schedule) for schedule in [best_schedule]) / 1
+
+            best_fitness_history.append(best_fitness)
+            avg_fitness_history.append(avg_fitness)
+
+            progress_bar.progress((i + 1) / generations)
+
+        st.session_state.best_schedule = best_schedule
+        st.session_state.best_fitness_history = best_fitness_history
+        st.session_state.avg_fitness_history = avg_fitness_history
+
+        st.success("Genetic algorithm completed. View results in the Results page.")
+
+def show_results_page():
+    st.title("Scheduling Results")
+
+    if 'best_schedule' not in st.session_state:
+        st.warning("No schedule has been generated yet. Please run the genetic algorithm first.")
+        return
+
+    best_schedule = st.session_state.best_schedule
+    best_fitness_history = st.session_state.best_fitness_history
+    avg_fitness_history = st.session_state.avg_fitness_history
+
+    st.subheader("Best Schedule")
+    st.write(f"Fitness Score: {fitness(best_schedule)}")
+
+    for meeting, agent in best_schedule.assignments.items():
+        st.write(
+            f"Meeting (Slot {meeting.start_slot}, Duration {meeting.duration}, Skill {meeting.required_skill}) assigned to Agent {agent.id}")
+
+    # Fitness History Plot
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(y=best_fitness_history, mode='lines', name='Best Fitness'))
+    fig.add_trace(go.Scatter(y=avg_fitness_history, mode='lines', name='Average Fitness'))
+    fig.update_layout(title='Fitness History', xaxis_title='Generation', yaxis_title='Fitness Score')
+    st.plotly_chart(fig)
+
+    # Agent Workload
+    agent_workload = {agent.id: 0 for agent in best_schedule.agents}
+    for meeting, agent in best_schedule.assignments.items():
+        agent_workload[agent.id] += meeting.duration
+
+    fig = go.Figure(data=[go.Bar(x=list(agent_workload.keys()), y=list(agent_workload.values()))])
+    fig.update_layout(title='Agent Workload', xaxis_title='Agent ID', yaxis_title='Total Hours')
+    st.plotly_chart(fig)
+
+if __name__ == "__main__":
+    main()

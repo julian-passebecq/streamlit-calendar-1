@@ -1,4 +1,4 @@
-streamlit-calendar
 streamlit
+streamlit-calendar
 pandas
 plotly

@@ -1,6 +1,8 @@
 import streamlit as st
 import plotly.graph_objects as go
 from utils.genetic_algorithm import Agent, Meeting
+from streamlit_calendar import calendar
+import datetime
 
 st.title("Agent Calendars")
 
@@ -18,27 +20,48 @@ selected_agent_id = st.sidebar.selectbox("Select Agent", options=[agent.id for a
 selected_agent = next(agent for agent in best_schedule.agents if agent.id == selected_agent_id)
 agent_meetings = [meeting for meeting, agent in best_schedule.assignments.items() if agent.id == selected_agent_id]
 
-# Create a timeline for the agent
-fig = go.Figure()
-
+# Create calendar events for the agent
+start_date = datetime.date.today() - datetime.timedelta(days=datetime.date.today().weekday())
+events = []
 for meeting in agent_meetings:
-    fig.add_trace(go.Bar(
-        x=[meeting.start_slot, meeting.start_slot + meeting.duration],
-        y=[meeting.required_skill],
-        orientation='h',
-        name=f"Meeting {meeting.start_slot}"
-    ))
+    day = meeting.start_slot // 48  # Determine the day (0-6) based on the start slot
+    start_time = datetime.time(hour=(meeting.start_slot % 48) // 2, minute=((meeting.start_slot % 48) % 2) * 30)
+    end_time = (datetime.datetime.combine(datetime.date.min, start_time) + datetime.timedelta(minutes=30 * meeting.duration)).time()
+    event_date = start_date + datetime.timedelta(days=day)
+    events.append({
+        "title": meeting.required_skill,
+        "start": f"{event_date}T{start_time}",
+        "end": f"{event_date}T{end_time}",
+        "backgroundColor": "#FF9999",  # You can assign colors based on skill if desired
+        "borderColor": "#FF9999",
+    })
 
-fig.update_layout(
-    title=f"Schedule for Agent {selected_agent_id}",
-    xaxis_title="Time Slot",
-    yaxis_title="Meeting Type",
-    barmode='stack',
-    height=400,
-    showlegend=False
-)
+calendar_options = {
+    "headerToolbar": {
+        "left": "today prev,next",
+        "center": "title",
+        "right": "dayGridMonth,timeGridWeek,timeGridDay",
+    },
+    "initialView": "timeGridWeek",
+    "slotMinTime": "06:00:00",
+    "slotMaxTime": "30:00:00",  # 6:00 AM next day
+    "expandRows": True,
+    "height": "650px",
+    "dayMaxEvents": True,
+    "allDaySlot": False,
+    "scrollTime": "08:00:00",  # Start scrolled to 8:00 AM
+    "nowIndicator": True,
+}
 
-st.plotly_chart(fig)
+custom_css = """
+    .fc-event-past { opacity: 0.8; }
+    .fc-event-time { font-weight: bold; }
+    .fc-event-title { font-style: italic; }
+"""
+
+st.subheader(f"Calendar for Agent {selected_agent_id}")
+cal = calendar(events=events, options=calendar_options, custom_css=custom_css)
+st.write(cal)
 
 # Display agent details
 st.subheader(f"Agent {selected_agent_id} Details")
@@ -48,4 +71,14 @@ st.write(f"Total meetings: {len(agent_meetings)}")
 # Display meeting details
 st.subheader("Meeting Details")
 for meeting in agent_meetings:
-    st.write(f"Start: {meeting.start_slot}, Duration: {meeting.duration}, Skill: {meeting.required_skill}")
+    st.write(f"Start Slot: {meeting.start_slot}, Duration: {meeting.duration}, Skill: {meeting.required_skill}")
+
+# Workload distribution
+workload = [0] * 7  # 7 days
+for meeting in agent_meetings:
+    day = meeting.start_slot // 48
+    workload[day] += meeting.duration / 2  # Convert to hours
+
+fig = go.Figure(data=[go.Bar(x=['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], y=workload)])
+fig.update_layout(title='Daily Workload', xaxis_title='Day', yaxis_title='Hours')
+st.plotly_chart(fig)

@@ -19,9 +19,12 @@ show_issues = st.sidebar.checkbox("Highlight Issues", value=True)
 
 # Generate calendar events from the best schedule
 events = []
+start_date = datetime.date.today() - datetime.timedelta(days=datetime.date.today().weekday())
 for meeting, agent in best_schedule.assignments.items():
-    start_time = datetime.datetime.combine(datetime.date.today(), datetime.time(hour=meeting.start_slot // 2, minute=(meeting.start_slot % 2) * 30))
-    end_time = start_time + datetime.timedelta(hours=meeting.duration / 2)
+    day = meeting.start_slot // 48  # Determine the day (0-6) based on the start slot
+    start_time = datetime.time(hour=(meeting.start_slot % 48) // 2, minute=((meeting.start_slot % 48) % 2) * 30)
+    end_time = (datetime.datetime.combine(datetime.date.min, start_time) + datetime.timedelta(minutes=30 * meeting.duration)).time()
+    event_date = start_date + datetime.timedelta(days=day)
     
     # Check for issues
     has_issue = False
@@ -38,8 +41,8 @@ for meeting, agent in best_schedule.assignments.items():
 
     events.append({
         "title": f"Agent {agent.id if agent else 'Unassigned'}: {meeting.required_skill}",
-        "start": start_time.isoformat(),
-        "end": end_time.isoformat(),
+        "start": f"{event_date}T{start_time}",
+        "end": f"{event_date}T{end_time}",
         "backgroundColor": event_color,
         "borderColor": event_color,
         "textColor": "white" if has_issue else "black"
@@ -80,8 +83,6 @@ st.write("Gray: Unassigned meeting")
 st.subheader("Summary Table")
 
 summary_data = []
-start_date = min(datetime.datetime.fromisoformat(event['start']).date() for event in events)
-
 for day in range(7):
     current_date = start_date + datetime.timedelta(days=day)
     day_events = [event for event in events if

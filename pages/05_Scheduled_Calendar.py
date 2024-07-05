@@ -21,8 +21,9 @@ show_issues = st.sidebar.checkbox("Highlight Issues", value=True)
 events = []
 start_date = datetime.date.today() - datetime.timedelta(days=datetime.date.today().weekday())
 for meeting, agent in best_schedule.assignments.items():
-    day = meeting.start_slot // 48  # Determine the day (0-6) based on the start slot
-    start_time = datetime.time(hour=(meeting.start_slot % 48) // 2, minute=((meeting.start_slot % 48) % 2) * 30)
+    day = meeting.start_slot // (24 * 2)  # 48 slots per day
+    slot_in_day = meeting.start_slot % (24 * 2)
+    start_time = datetime.time(hour=slot_in_day // 2, minute=(slot_in_day % 2) * 30)
     end_time = (datetime.datetime.combine(datetime.date.min, start_time) + datetime.timedelta(minutes=30 * meeting.duration)).time()
     event_date = start_date + datetime.timedelta(days=day)
     

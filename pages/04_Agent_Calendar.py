@@ -21,18 +21,12 @@ selected_agent = next(agent for agent in best_schedule.agents if agent.id == sel
 agent_meetings = [meeting for meeting, agent in best_schedule.assignments.items() if agent.id == selected_agent_id]
 
 # Create calendar events for the agent
-start_date = datetime.date.today() - datetime.timedelta(days=datetime.date.today().weekday())
 events = []
 for meeting in agent_meetings:
-    day = meeting.start_slot // (24 * 2)  # 48 slots per day
-    slot_in_day = meeting.start_slot % (24 * 2)
-    start_time = datetime.time(hour=slot_in_day // 2, minute=(slot_in_day % 2) * 30)
-    end_time = (datetime.datetime.combine(datetime.date.min, start_time) + datetime.timedelta(minutes=30 * meeting.duration)).time()
-    event_date = start_date + datetime.timedelta(days=day)
     events.append({
         "title": meeting.required_skill,
-        "start": f"{event_date}T{start_time}",
-        "end": f"{event_date}T{end_time}",
+        "start": meeting.start.isoformat(),
+        "end": (meeting.start + datetime.timedelta(hours=meeting.duration)).isoformat(),
         "backgroundColor": "#FF9999",  # You can assign colors based on skill if desired
         "borderColor": "#FF9999",
     })
@@ -72,16 +66,13 @@ st.write(f"Total meetings: {len(agent_meetings)}")
 # Display meeting details
 st.subheader("Meeting Details")
 for meeting in agent_meetings:
-    day = meeting.start_slot // (24 * 2)
-    slot_in_day = meeting.start_slot % (24 * 2)
-    start_time = f"{slot_in_day // 2:02d}:{(slot_in_day % 2) * 30:02d}"
-    st.write(f"Day: {day+1}, Start Time: {start_time}, Duration: {meeting.duration * 30} minutes, Skill: {meeting.required_skill}")
+    st.write(f"Start: {meeting.start.strftime('%Y-%m-%d %H:%M')}, Duration: {meeting.duration} hours, Skill: {meeting.required_skill}")
 
 # Workload distribution
 workload = [0] * 7  # 7 days
 for meeting in agent_meetings:
-    day = meeting.start_slot // (24 * 2)
-    workload[day] += meeting.duration / 2  # Convert to hours
+    day = meeting.start.weekday()
+    workload[day] += meeting.duration
 
 fig = go.Figure(data=[go.Bar(x=['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], y=workload)])
 fig.update_layout(title='Daily Workload', xaxis_title='Day', yaxis_title='Hours')

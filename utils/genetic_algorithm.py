@@ -10,8 +10,12 @@ class Agent:
 class Meeting:
     def __init__(self, start: datetime.datetime, duration: int, required_skill: str):
         self.start = start
-        self.duration = duration
+        self.duration = max(duration, 1)  # Ensure duration is at least 1 hour
         self.required_skill = required_skill
+
+    @property
+    def end(self):
+        return self.start + datetime.timedelta(hours=self.duration)
 
 class Schedule:
     def __init__(self, agents: List[Agent], meetings: List[Meeting]):

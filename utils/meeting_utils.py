@@ -43,6 +43,8 @@ def generate_meetings(start_date, num_clients, total_hours,
                       night_shift_start, night_shift_end,
                       meeting_types):
     events = []
+    current_year = datetime.datetime.now().year
+    start_date = start_date.replace(year=current_year)
     hours_per_day = total_hours / 5  # Distribute over 5 workdays
     for day in range(5):  # Monday to Friday
         current_date = start_date + datetime.timedelta(days=day)

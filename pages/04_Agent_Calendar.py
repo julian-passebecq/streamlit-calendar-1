@@ -26,7 +26,7 @@ for meeting in agent_meetings:
     events.append({
         "title": meeting.required_skill,
         "start": meeting.start.isoformat(),
-        "end": (meeting.start + datetime.timedelta(hours=meeting.duration)).isoformat(),
+        "end": meeting.end.isoformat(),
         "backgroundColor": "#FF9999",  # You can assign colors based on skill if desired
         "borderColor": "#FF9999",
     })
@@ -66,7 +66,7 @@ st.write(f"Total meetings: {len(agent_meetings)}")
 # Display meeting details
 st.subheader("Meeting Details")
 for meeting in agent_meetings:
-    st.write(f"Start: {meeting.start.strftime('%Y-%m-%d %H:%M')}, Duration: {meeting.duration} hours, Skill: {meeting.required_skill}")
+    st.write(f"Start: {meeting.start.strftime('%Y-%m-%d %H:%M')}, Duration: {meeting.duration} hours, End: {meeting.end.strftime('%Y-%m-%d %H:%M')}, Skill: {meeting.required_skill}")
 
 # Workload distribution
 workload = [0] * 7  # 7 days

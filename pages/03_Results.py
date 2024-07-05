@@ -23,7 +23,7 @@ else:
 
     for meeting, agent in best_schedule.assignments.items():
         st.write(
-            f"Meeting (Slot {meeting.start_slot}, Duration {meeting.duration}, Skill {meeting.required_skill}) assigned to Agent {agent.id}")
+            f"Meeting (Start: {meeting.start.strftime('%Y-%m-%d %H:%M')}, Duration: {meeting.duration} hours, Skill: {meeting.required_skill}) assigned to Agent {agent.id}")
 
     # Fitness History Plot
     fig = go.Figure()
@@ -47,9 +47,9 @@ else:
 
     st.subheader(f"Detailed Schedule for Agent {selected_agent}")
     agent_meetings = [meeting for meeting, agent in best_schedule.assignments.items() if agent.id == selected_agent]
-    agent_meetings.sort(key=lambda x: x.start_slot)
+    agent_meetings.sort(key=lambda x: x.start)
 
     for meeting in agent_meetings:
-        st.write(f"Slot {meeting.start_slot}-{meeting.start_slot + meeting.duration}: {meeting.required_skill}")
+        st.write(f"Start: {meeting.start.strftime('%Y-%m-%d %H:%M')}, Duration: {meeting.duration} hours, Skill: {meeting.required_skill}")
 
     # Add more analysis options here as needed

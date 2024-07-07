@@ -53,6 +53,14 @@ if 'calendar_events' not in st.session_state or st.button("Generate New Calendar
         night_shift_start, night_shift_end,
         meeting_types
     )
+    st.write(f"Generated {len(st.session_state.calendar_events)} meetings")
+
+if 'calendar_events' in st.session_state:
+    st.write(f"Total meetings: {len(st.session_state.calendar_events)}")
+    if len(st.session_state.calendar_events) > 0:
+        st.write("First meeting:", st.session_state.calendar_events[0])
+    else:
+        st.write("No meetings generated")
 
 all_clients = sorted(set(event['client'] for event in st.session_state.calendar_events))
 all_types = sorted(list(meeting_types.keys()))
@@ -64,6 +72,8 @@ filtered_events = [
     event for event in st.session_state.calendar_events
     if event['client'] in selected_clients and event['type'] in selected_types
 ]
+
+st.write(f"Filtered events: {len(filtered_events)}")
 
 calendar_options = {
     "headerToolbar": {
@@ -107,27 +117,30 @@ if isinstance(cal, dict) and 'eventClick' in cal:
 # Summary Table
 st.subheader("Summary Table")
 
-summary_data = []
-start_date = min(datetime.datetime.fromisoformat(event['start']).date() for event in filtered_events)
+if filtered_events:
+    summary_data = []
+    start_date = min(datetime.datetime.fromisoformat(event['start']).date() for event in filtered_events)
 
-for day in range(7):
-    current_date = start_date + datetime.timedelta(days=day)
-    day_events = [event for event in filtered_events if
-                  datetime.datetime.fromisoformat(event['start']).date() == current_date]
+    for day in range(7):
+        current_date = start_date + datetime.timedelta(days=day)
+        day_events = [event for event in filtered_events if
+                      datetime.datetime.fromisoformat(event['start']).date() == current_date]
 
-    total_hours = sum((datetime.datetime.fromisoformat(event['end']) - datetime.datetime.fromisoformat(event['start'])).total_seconds() / 3600 for event in day_events)
-    required_agents = len(day_events)
-    night_appointments = sum(
-        1 for event in day_events if event['is_night'] or datetime.datetime.fromisoformat(event['start']).hour >= 20)
-    day_appointments = required_agents - night_appointments
+        total_hours = sum(meeting_types[event['type']]['duration'] for event in day_events)
+        required_agents = len(day_events)
+        night_appointments = sum(
+            1 for event in day_events if event['is_night'] or datetime.datetime.fromisoformat(event['start']).hour >= 20)
+        day_appointments = required_agents - night_appointments
 
-    summary_data.append({
-        "Date": current_date.strftime("%Y-%m-%d"),
-        "Total Hours": round(total_hours, 2),
-        "Required Agents": required_agents,
-        "Day Appointments": day_appointments,
-        "Night Appointments": night_appointments
-    })
+        summary_data.append({
+            "Date": current_date.strftime("%Y-%m-%d"),
+            "Total Hours": total_hours,
+            "Required Agents": required_agents,
+            "Day Appointments": day_appointments,
+            "Night Appointments": night_appointments
+        })
 
-summary_df = pd.DataFrame(summary_data)
-st.table(summary_df)
+    summary_df = pd.DataFrame(summary_data)
+    st.table(summary_df)
+else:
+    st.write("No events to summarize")

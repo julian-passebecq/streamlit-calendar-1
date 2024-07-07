@@ -21,7 +21,6 @@ selected_agent = next(agent for agent in best_schedule.agents if agent.id == sel
 agent_meetings = [meeting for meeting, agent in best_schedule.assignments.items() if agent.id == selected_agent_id]
 
 # Create calendar events for the agent
-start_date = datetime.date.today() - datetime.timedelta(days=datetime.date.today().weekday())
 events = []
 for meeting in agent_meetings:
     day = meeting.start_slot // (24 * 2)  # 48 slots per day
@@ -31,8 +30,8 @@ for meeting in agent_meetings:
     event_date = start_date + datetime.timedelta(days=day)
     events.append({
         "title": meeting.required_skill,
-        "start": f"{event_date}T{start_time}",
-        "end": f"{event_date}T{end_time}",
+        "start": meeting.start.isoformat(),
+        "end": meeting.end.isoformat(),
         "backgroundColor": "#FF9999",  # You can assign colors based on skill if desired
         "borderColor": "#FF9999",
     })

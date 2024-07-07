@@ -10,7 +10,8 @@ meeting_types = {
 
 def generate_meeting(date, client, day_shift_1_start, day_shift_1_end,
                      day_shift_2_start, day_shift_2_end, night_shift_start, night_shift_end,
-                     meeting_types, is_night=False):
+                     meeting_types):
+    is_night = random.choice([True, False])
     if is_night:
         meeting_type = random.choice(["Security", "Monitoring"])
         start_hour = random.randint(night_shift_start.hour, 23) if night_shift_start.hour != 0 else random.randint(0, night_shift_end.hour)
@@ -42,16 +43,17 @@ def generate_meetings(start_date, num_clients, total_hours,
                       night_shift_start, night_shift_end,
                       meeting_types):
     events = []
+    current_year = datetime.datetime.now().year
+    start_date = start_date.replace(year=current_year)
     hours_per_day = total_hours / 5  # Distribute over 5 workdays
     for day in range(5):  # Monday to Friday
         current_date = start_date + datetime.timedelta(days=day)
         daily_hours = 0
         while daily_hours < hours_per_day:
             client = random.randint(1, num_clients)
-            is_night = random.choice([True, False]) if daily_hours >= hours_per_day * 0.8 else False
             meeting = generate_meeting(current_date, client, day_shift_1_start, day_shift_1_end,
                                        day_shift_2_start, day_shift_2_end, night_shift_start, night_shift_end,
-                                       meeting_types, is_night)
+                                       meeting_types)
             meeting_duration = meeting_types[meeting['type']]['duration']
             if daily_hours + meeting_duration <= hours_per_day:
                 events.append(meeting)
@@ -65,7 +67,7 @@ def generate_meetings(start_date, num_clients, total_hours,
         client = random.randint(1, num_clients)
         meeting = generate_meeting(saturday, client, day_shift_1_start, day_shift_1_end,
                                    day_shift_2_start, day_shift_2_end, night_shift_start, night_shift_end,
-                                   meeting_types, is_night=True)
+                                   meeting_types)
         events.append(meeting)
     
     return events

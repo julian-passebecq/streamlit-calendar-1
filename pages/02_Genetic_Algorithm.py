@@ -21,8 +21,8 @@ calendar_events = st.session_state.calendar_events
 # Convert calendar events to meetings
 meetings = [
     Meeting(
-        start_slot=int(datetime.datetime.fromisoformat(event['start']).hour * 2 + (datetime.datetime.fromisoformat(event['start']).minute // 30)),
-        duration=int((datetime.datetime.fromisoformat(event['end']) - datetime.datetime.fromisoformat(event['start'])).total_seconds() / 1800),
+        start=datetime.datetime.fromisoformat(event['start']),
+        duration=int((datetime.datetime.fromisoformat(event['end']) - datetime.datetime.fromisoformat(event['start'])).total_seconds() / 3600),
         required_skill=event['type']
     )
     for event in calendar_events
@@ -39,31 +39,22 @@ st.subheader("Penalty Values")
 penalty_wrong_skill = st.number_input("Wrong Skill Penalty", value=100, step=10)
 penalty_overlap = st.number_input("Overlapping Meetings Penalty", value=50, step=10)
 penalty_consecutive = st.number_input("Consecutive Meetings Penalty", value=25, step=5)
-penalty_overwork = st.number_input("Overwork Penalty (per slot)", value=10, step=1)
+penalty_overwork = st.number_input("Overwork Penalty (per hour)", value=10, step=1)
 penalty_long_shift = st.number_input("Long Shift Penalty", value=50, step=10)
-
-# Store penalty values in session state
-st.session_state.penalty_wrong_skill = penalty_wrong_skill
-st.session_state.penalty_overlap = penalty_overlap
-st.session_state.penalty_consecutive = penalty_consecutive
-st.session_state.penalty_overwork = penalty_overwork
-st.session_state.penalty_long_shift = penalty_long_shift
 
 # Run genetic algorithm
 if st.button("Run Genetic Algorithm"):
     progress_bar = st.progress(0)
     best_fitness_history = []
     avg_fitness_history = []
-    population = initialize_population(pop_size, agents, meetings)
 
     for i in range(generations):
-        best_schedule = genetic_algorithm(agents, meetings, pop_size, generations, mutation_rate,
+        best_schedule = genetic_algorithm(agents, meetings, pop_size, 1, mutation_rate,
                                           penalty_wrong_skill, penalty_overlap, penalty_consecutive,
                                           penalty_overwork, penalty_long_shift)
-        population_fitness = [fitness(schedule, penalty_wrong_skill, penalty_overlap, penalty_consecutive,
-                                      penalty_overwork, penalty_long_shift) for schedule in population]
-        best_fitness = max(population_fitness)
-        avg_fitness = sum(population_fitness) / len(population_fitness)
+        best_fitness = fitness(best_schedule, penalty_wrong_skill, penalty_overlap, penalty_consecutive,
+                               penalty_overwork, penalty_long_shift)
+        avg_fitness = best_fitness  # Since we're only getting one schedule per generation
 
         best_fitness_history.append(best_fitness)
         avg_fitness_history.append(avg_fitness)

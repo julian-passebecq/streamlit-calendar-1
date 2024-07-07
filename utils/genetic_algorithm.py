@@ -1,5 +1,6 @@
 import random
 from typing import List, Dict, Tuple
+import datetime
 
 class Agent:
     def __init__(self, id: int, skills: List[str]):
@@ -7,10 +8,14 @@ class Agent:
         self.skills = skills
 
 class Meeting:
-    def __init__(self, start_slot: int, duration: int, required_skill: str):
-        self.start_slot = start_slot
-        self.duration = duration
+    def __init__(self, start: datetime.datetime, duration: int, required_skill: str):
+        self.start = start
+        self.duration = max(duration, 1)  # Ensure duration is at least 1 hour
         self.required_skill = required_skill
+
+    @property
+    def end(self):
+        return self.start + datetime.timedelta(hours=self.duration)
 
 class Schedule:
     def __init__(self, agents: List[Agent], meetings: List[Meeting]):
@@ -33,28 +38,37 @@ def initialize_population(pop_size: int, agents: List[Agent], meetings: List[Mee
 def fitness(schedule: Schedule, penalty_wrong_skill: int, penalty_overlap: int, penalty_consecutive: int,
             penalty_overwork: int, penalty_long_shift: int) -> float:
     score = 0
-    agent_schedules = {agent: [0] * 48 for agent in schedule.agents}  # 48 30-minute slots
+    agent_schedules = {agent: [] for agent in schedule.agents}
 
     for meeting, agent in schedule.assignments.items():
         if meeting.required_skill not in agent.skills and meeting.required_skill != 'Monitoring':
             score -= penalty_wrong_skill
 
-        for slot in range(meeting.start_slot, min(meeting.start_slot + meeting.duration, 48)):
-            if agent_schedules[agent][slot] == 1:
-                score -= penalty_overlap
-            agent_schedules[agent][slot] = 1
+        agent_schedules[agent].append(meeting)
 
-        if meeting.start_slot > 0 and agent_schedules[agent][meeting.start_slot - 1] == 1:
-            score -= penalty_consecutive
+    for agent, meetings in agent_schedules.items():
+        meetings.sort(key=lambda m: m.start)
+        for i in range(len(meetings)):
+            if i > 0:
+                time_between = (meetings[i].start - meetings[i-1].start).total_seconds() / 3600
+                if time_between < 0.5:  # Less than 30 minutes between meetings
+                    score -= penalty_consecutive
+                elif time_between < 0:  # Overlapping meetings
+                    score -= penalty_overlap
 
-    for agent, agent_schedule in agent_schedules.items():
-        work_slots = sum(agent_schedule)
-        if work_slots > 16:  # 8 hours
-            score -= (work_slots - 16) * penalty_overwork
+        work_hours = sum(meeting.duration for meeting in meetings)
+        if work_hours > 8:
+            score -= (work_hours - 8) * penalty_overwork
 
-        work_periods = [sum(agent_schedule[i:i + 6]) for i in range(0, len(agent_schedule), 6)]
-        if max(work_periods, default=0) > 3:  # More than 3 hours without a break
-            score -= penalty_long_shift
+        # Check for long shifts (more than 3 hours without a break)
+        current_shift = 0
+        for meeting in meetings:
+            current_shift += meeting.duration
+            if current_shift > 3:
+                score -= penalty_long_shift
+                current_shift = 0
+            else:
+                current_shift = 0
 
     return score
 

@@ -11,10 +11,10 @@ meeting_types = {
 def generate_meeting(date, client, day_shift_1_start, day_shift_1_end,
                      day_shift_2_start, day_shift_2_end, night_shift_start, night_shift_end,
                      meeting_types):
-    is_night = random.choice([True, False])
+    is_night = random.random() < 0.2  # 20% chance of night shift
     if is_night:
         meeting_type = random.choice(["Security", "Monitoring"])
-        start_hour = random.randint(night_shift_start.hour, 23) if night_shift_start.hour != 0 else random.randint(0, night_shift_end.hour)
+        start_hour = random.randint(night_shift_start.hour, 23)
     else:
         meeting_type = random.choice(list(meeting_types.keys()))
         if random.choice([True, False]):
@@ -23,13 +23,14 @@ def generate_meeting(date, client, day_shift_1_start, day_shift_1_end,
             start_hour = random.randint(day_shift_2_start.hour, day_shift_2_end.hour - 1)
     
     start_time = datetime.time(hour=start_hour, minute=random.choice([0, 30]))
-    duration = datetime.timedelta(hours=meeting_types[meeting_type]["duration"])
-    end_time = (datetime.datetime.combine(date, start_time) + duration).time()
+    duration = meeting_types[meeting_type]["duration"]
+    start_datetime = datetime.datetime.combine(date, start_time)
+    end_datetime = start_datetime + datetime.timedelta(hours=duration)
     
     return {
         "title": f"Client {client}: {meeting_type}" + (" (Night)" if is_night else ""),
-        "start": f"{date}T{start_time.strftime('%H:%M:%S')}",
-        "end": f"{date}T{end_time.strftime('%H:%M:%S')}",
+        "start": start_datetime.isoformat(),
+        "end": end_datetime.isoformat(),
         "backgroundColor": meeting_types[meeting_type]["color"],
         "borderColor": meeting_types[meeting_type]["color"],
         "client": f"Client {client}",

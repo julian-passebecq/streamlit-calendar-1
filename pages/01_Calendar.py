@@ -115,15 +115,15 @@ for day in range(7):
     day_events = [event for event in filtered_events if
                   datetime.datetime.fromisoformat(event['start']).date() == current_date]
 
-    total_hours = sum(meeting_types[event['type']]['duration'] for event in day_events)
+    total_hours = sum((datetime.datetime.fromisoformat(event['end']) - datetime.datetime.fromisoformat(event['start'])).total_seconds() / 3600 for event in day_events)
     required_agents = len(day_events)
     night_appointments = sum(
-        1 for event in day_events if event['is_night'] or int(event['start'].split('T')[1].split(':')[0]) >= 20)
+        1 for event in day_events if event['is_night'] or datetime.datetime.fromisoformat(event['start']).hour >= 20)
     day_appointments = required_agents - night_appointments
 
     summary_data.append({
         "Date": current_date.strftime("%Y-%m-%d"),
-        "Total Hours": total_hours,
+        "Total Hours": round(total_hours, 2),
         "Required Agents": required_agents,
         "Day Appointments": day_appointments,
         "Night Appointments": night_appointments

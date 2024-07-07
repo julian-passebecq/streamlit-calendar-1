@@ -8,14 +8,14 @@ class Agent:
         self.skills = skills
 
 class Meeting:
-    def __init__(self, start: datetime.datetime, duration: int, required_skill: str):
+    def __init__(self, start: datetime.datetime, end: datetime.datetime, required_skill: str):
         self.start = start
-        self.duration = max(duration, 1)  # Ensure duration is at least 1 hour
+        self.end = end
         self.required_skill = required_skill
 
     @property
-    def end(self):
-        return self.start + datetime.timedelta(hours=self.duration)
+    def duration(self):
+        return (self.end - self.start).total_seconds() / 3600
 
 class Schedule:
     def __init__(self, agents: List[Agent], meetings: List[Meeting]):
@@ -50,7 +50,7 @@ def fitness(schedule: Schedule, penalty_wrong_skill: int, penalty_overlap: int, 
         meetings.sort(key=lambda m: m.start)
         for i in range(len(meetings)):
             if i > 0:
-                time_between = (meetings[i].start - meetings[i-1].start).total_seconds() / 3600
+                time_between = (meetings[i].start - meetings[i-1].end).total_seconds() / 3600
                 if time_between < 0.5:  # Less than 30 minutes between meetings
                     score -= penalty_consecutive
                 elif time_between < 0:  # Overlapping meetings
@@ -61,14 +61,16 @@ def fitness(schedule: Schedule, penalty_wrong_skill: int, penalty_overlap: int, 
             score -= (work_hours - 8) * penalty_overwork
 
         # Check for long shifts (more than 3 hours without a break)
-        current_shift = 0
+        current_shift = datetime.timedelta()
+        last_end_time = None
         for meeting in meetings:
-            current_shift += meeting.duration
-            if current_shift > 3:
+            if last_end_time and (meeting.start - last_end_time).total_seconds() / 3600 >= 1:
+                current_shift = datetime.timedelta()
+            current_shift += meeting.end - meeting.start
+            if current_shift.total_seconds() / 3600 > 3:
                 score -= penalty_long_shift
-                current_shift = 0
-            else:
-                current_shift = 0
+                current_shift = datetime.timedelta()
+            last_end_time = meeting.end
 
     return score
 

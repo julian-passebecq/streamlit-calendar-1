@@ -22,7 +22,7 @@ calendar_events = st.session_state.calendar_events
 meetings = [
     Meeting(
         start=datetime.datetime.fromisoformat(event['start']),
-        duration=int((datetime.datetime.fromisoformat(event['end']) - datetime.datetime.fromisoformat(event['start'])).total_seconds() / 3600),
+        end=datetime.datetime.fromisoformat(event['end']),
         required_skill=event['type']
     )
     for event in calendar_events
@@ -41,6 +41,13 @@ penalty_overlap = st.number_input("Overlapping Meetings Penalty", value=50, step
 penalty_consecutive = st.number_input("Consecutive Meetings Penalty", value=25, step=5)
 penalty_overwork = st.number_input("Overwork Penalty (per hour)", value=10, step=1)
 penalty_long_shift = st.number_input("Long Shift Penalty", value=50, step=10)
+
+# Store penalty values in session state
+st.session_state.penalty_wrong_skill = penalty_wrong_skill
+st.session_state.penalty_overlap = penalty_overlap
+st.session_state.penalty_consecutive = penalty_consecutive
+st.session_state.penalty_overwork = penalty_overwork
+st.session_state.penalty_long_shift = penalty_long_shift
 
 # Run genetic algorithm
 if st.button("Run Genetic Algorithm"):

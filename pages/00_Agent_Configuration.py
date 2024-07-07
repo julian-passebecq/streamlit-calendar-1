@@ -67,7 +67,7 @@ if 'agents' in st.session_state:
         'Fire': fire_agents * 40,
         'Security': security_agents * 40,
         'Maintenance': maintenance_agents * 40,
-        'Monitoring': total_weekly_hours - (fire_agents + security_agents + maintenance_agents) * 40
+        'Monitoring': total_weekly_hours  # All agents can do monitoring
     }
 
     # Create a DataFrame for weekly workload by skill

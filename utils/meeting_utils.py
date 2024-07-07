@@ -46,9 +46,9 @@ def generate_meetings(start_date, num_clients, total_hours,
     events = []
     current_year = datetime.datetime.now().year
     start_date = start_date.replace(year=current_year)
-    hours_per_day = total_hours / 5  # Distribute over 5 workdays
+    hours_per_day = total_hours / 6  # Distribute over 6 days (Monday to Saturday)
     print(f"Generating meetings for {total_hours} total hours, {hours_per_day} hours per day")
-    for day in range(5):  # Monday to Friday
+    for day in range(6):  # Monday to Saturday
         current_date = start_date + datetime.timedelta(days=day)
         daily_hours = 0
         daily_meetings = 0
@@ -66,17 +66,18 @@ def generate_meetings(start_date, num_clients, total_hours,
                 break
         print(f"Day {day + 1}: Generated {daily_meetings} meetings, total {daily_hours} hours")
     
-    # Add night shift for Saturday
-    saturday = start_date + datetime.timedelta(days=5)
-    saturday_meetings = 0
+    # Add night shift for Sunday
+    sunday = start_date + datetime.timedelta(days=6)
+    sunday_meetings = 0
     for _ in range(int(hours_per_day / 4)):  # Approximately 1/4 of daily meetings for night shift
         client = random.randint(1, num_clients)
-        meeting = generate_meeting(saturday, client, day_shift_1_start, day_shift_1_end,
+        meeting = generate_meeting(sunday, client, day_shift_1_start, day_shift_1_end,
                                    day_shift_2_start, day_shift_2_end, night_shift_start, night_shift_end,
                                    meeting_types)
+        meeting['is_night'] = True  # Force Sunday meetings to be night shifts
         events.append(meeting)
-        saturday_meetings += 1
-    print(f"Saturday: Generated {saturday_meetings} night meetings")
+        sunday_meetings += 1
+    print(f"Sunday: Generated {sunday_meetings} night meetings")
     
     print(f"Total meetings generated: {len(events)}")
     return events

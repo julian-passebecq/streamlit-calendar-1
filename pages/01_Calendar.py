@@ -44,8 +44,8 @@ total_agent_hours = num_agents * 8 * 5  # 8 hours per day, 5 days a week
 adjusted_hours = total_agent_hours * (workload_percentage / 100)
 
 if 'calendar_events' not in st.session_state or st.button("Generate New Calendar"):
-    today = datetime.date.today()
-    start_of_week = today - datetime.timedelta(days=today.weekday())
+    # Start from the last Monday
+    start_of_week = datetime.date.today() - datetime.timedelta(days=datetime.date.today().weekday())
     st.session_state.calendar_events = generate_meetings(
         start_of_week, num_clients, adjusted_hours,
         day_shift_1_start, day_shift_1_end,
@@ -57,10 +57,11 @@ if 'calendar_events' not in st.session_state or st.button("Generate New Calendar
 
 if 'calendar_events' in st.session_state:
     st.write(f"Total meetings: {len(st.session_state.calendar_events)}")
-    if len(st.session_state.calendar_events) > 0:
-        st.write("First meeting:", st.session_state.calendar_events[0])
-    else:
-        st.write("No meetings generated")
+    with st.expander("Show first meeting details"):
+        if len(st.session_state.calendar_events) > 0:
+            st.json(st.session_state.calendar_events[0])
+        else:
+            st.write("No meetings generated")
 
 all_clients = sorted(set(event['client'] for event in st.session_state.calendar_events))
 all_types = sorted(list(meeting_types.keys()))
@@ -90,6 +91,7 @@ calendar_options = {
     "allDaySlot": False,
     "scrollTime": "08:00:00",  # Start scrolled to 8:00 AM
     "nowIndicator": True,
+    "firstDay": 1,  # Start the week on Monday
 }
 
 custom_css = """

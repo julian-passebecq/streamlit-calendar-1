@@ -1,7 +1,6 @@
 import streamlit as st
 import random
 from utils.genetic_algorithm import Agent
-import plotly.graph_objects as go
 import pandas as pd
 
 st.title("Agent Configuration")
@@ -26,19 +25,16 @@ maintenance_agents = st.sidebar.number_input("Agents with Maintenance skill", mi
 st.write(f"Configuring {num_agents} agents:")
 
 agents = []
+skill_pool = ['Fire'] * fire_agents + ['Security'] * security_agents + ['Maintenance'] * maintenance_agents
+random.shuffle(skill_pool)
+
 for i in range(num_agents):
-    skills = []
-    if i < fire_agents:
-        skills.append("Fire")
-    if i < security_agents:
-        skills.append("Security")
-    if i < maintenance_agents:
-        skills.append("Maintenance")
-    
-    if not skills:
-        skills = ["Monitoring"]
-    
-    agents.append(Agent(i, skills))
+    skills = set()
+    while len(skills) < 2 and skill_pool:
+        skill = skill_pool.pop()
+        skills.add(skill)
+    skills.add("Monitoring")  # All agents can do monitoring
+    agents.append(Agent(i, list(skills)))
 
 if st.button("Save Agent Configuration"):
     st.session_state.agents = agents
@@ -55,7 +51,7 @@ if 'agents' in st.session_state:
     st.write(f"Full-time Agents: {st.session_state.full_time_agents}")
     st.write(f"Part-time Agents (80%): {st.session_state.part_time_agents}")
 
-    # Calculate and display workload information
+    # Calculate workload information
     st.subheader("Workload Information")
 
     # Weekly workload
@@ -66,39 +62,39 @@ if 'agents' in st.session_state:
     st.write(f"Total Weekly Hours: {total_weekly_hours}")
     st.write(f"Average Daily Hours: {total_weekly_hours / 5:.2f}")  # Assuming 5 working days
 
-    # Create a DataFrame for daily workload
-    days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
-    daily_workload = [total_weekly_hours / 5] * 5  # Evenly distribute hours across 5 days
+    # Calculate workload distribution by skill
+    skill_hours = {
+        'Fire': fire_agents * 40,
+        'Security': security_agents * 40,
+        'Maintenance': maintenance_agents * 40,
+        'Monitoring': total_weekly_hours - (fire_agents + security_agents + maintenance_agents) * 40
+    }
 
-    df = pd.DataFrame({
-        'Day': days,
-        'Hours': daily_workload
+    # Create a DataFrame for weekly workload by skill
+    df_weekly = pd.DataFrame({
+        'Skill': skill_hours.keys(),
+        'Weekly Hours': skill_hours.values()
     })
 
-    # Create a bar chart for daily workload
-    fig = go.Figure(data=[go.Bar(x=df['Day'], y=df['Hours'])])
-    fig.update_layout(title='Daily Workload Distribution',
-                      xaxis_title='Day of Week',
-                      yaxis_title='Working Hours')
-    st.plotly_chart(fig)
+    st.subheader("Weekly Workload by Skill")
+    st.table(df_weekly)
 
-    # Pie chart for agent type distribution
-    labels = ['Full-time', 'Part-time']
-    values = [st.session_state.full_time_agents, st.session_state.part_time_agents]
+    # Create a DataFrame for daily workload by skill
+    df_daily = pd.DataFrame({
+        'Skill': skill_hours.keys(),
+        'Daily Hours': [hours / 5 for hours in skill_hours.values()]
+    })
 
-    fig = go.Figure(data=[go.Pie(labels=labels, values=values)])
-    fig.update_layout(title='Agent Type Distribution')
-    st.plotly_chart(fig)
-
-    # Bar chart for skill distribution
-    skills = ['Fire', 'Security', 'Maintenance', 'Monitoring']
-    skill_counts = [fire_agents, security_agents, maintenance_agents, num_agents - max(fire_agents, security_agents, maintenance_agents)]
-
-    fig = go.Figure(data=[go.Bar(x=skills, y=skill_counts)])
-    fig.update_layout(title='Skill Distribution',
-                      xaxis_title='Skill',
-                      yaxis_title='Number of Agents')
-    st.plotly_chart(fig)
+    st.subheader("Daily Workload by Skill")
+    st.table(df_daily)
 
 else:
     st.warning("No agent configuration saved yet. Please configure and save agents.")
+
+# Additional ideas
+st.subheader("Additional Information")
+st.write("1. Skill Overlap: Some agents have multiple skills, which allows for flexible scheduling.")
+st.write("2. Monitoring Capacity: All agents can perform monitoring tasks, providing a baseline workload distribution.")
+st.write("3. Part-time Impact: Part-time agents (if any) contribute 80% of full-time hours, affecting overall capacity.")
+st.write("4. Peak Hours: Consider that certain skills might be in higher demand during specific times of day.")
+st.write("5. Training Needs: Agents with fewer skills might benefit from cross-training to increase scheduling flexibility.")
